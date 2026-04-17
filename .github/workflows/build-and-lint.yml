@@ -1,4 +1,4 @@
-name: Lint
+name: Build Check
 
 on:
   push:
@@ -7,8 +7,8 @@ on:
     branches: [main]
 
 jobs:
-  eslint:
-    name: Run ESLint
+  build:
+    name: Build
     runs-on: ubuntu-latest
 
     steps:
@@ -18,12 +18,10 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          # no cache: npm here, since we don't want a lockfile
+          node-version: 22
 
       - name: Install dependencies
         run: npm install
 
-      - name: Run ESLint
-        run: npm run lint
-        # or: run: npx eslint .
+      - name: Run build
+        run: npm run build
