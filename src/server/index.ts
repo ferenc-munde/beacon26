@@ -7,7 +7,7 @@ import { BeaconRoom } from './room.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const clientDist = path.resolve(__dirname, '..', '..');
+const clientDist = path.resolve(__dirname, '..');
 const port = Number(process.env.PORT || 3000);
 
 const app = express();
