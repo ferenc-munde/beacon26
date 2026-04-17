@@ -18,3 +18,9 @@ pnpm-debug.log*
 .DS_Store
 .idea/
 .vscode/
+
+# Superpowers
+.superpowers/
+
+# docs
+docs/
