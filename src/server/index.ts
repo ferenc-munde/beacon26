@@ -23,8 +23,17 @@ gameServer.define('beacon_puzzle', BeaconPuzzleRoom);
 
 app.use(express.static(clientDist));
 
+
+app.get('', (_request, response) => {
+  response.sendFile(path.join(clientDist, 'index.html'));
+});
+
 app.get('/health', (_request, response) => {
   response.status(200).send('ok');
+});
+
+app.get('/game', (_request, response) => {
+  response.sendFile(path.join(clientDist, 'game.html'));
 });
 
 app.get('*', (_request, response) => {
