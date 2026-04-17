@@ -3,7 +3,8 @@ import { fileURLToPath } from 'node:url';
 import express from 'express';
 import http from 'node:http';
 import { Server } from 'colyseus';
-import { BeaconRoom } from './room.js';
+import { WebSocketTransport } from '@colyseus/ws-transport';
+import { BeaconPuzzleRoom } from './room.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -12,9 +13,13 @@ const port = Number(process.env.PORT || 3000);
 
 const app = express();
 const httpServer = http.createServer(app);
-const gameServer = new Server({ server: httpServer });
+const gameServer = new Server({
+  transport: new WebSocketTransport({
+    server: httpServer
+  })
+});
 
-gameServer.define('lobby', BeaconRoom);
+gameServer.define('beacon_puzzle', BeaconPuzzleRoom);
 
 app.use(express.static(clientDist));
 
