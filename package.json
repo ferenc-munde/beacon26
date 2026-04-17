@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "lint": "eslint .",
     "dev": "concurrently -k \"npm:dev:server\" \"npm:dev:client\"",
     "dev:server": "tsx watch src/server/index.ts",
     "dev:client": "vite",
@@ -15,10 +16,13 @@
   },
   "dependencies": {
     "@colyseus/schema": "^3.0.76",
+    "@eslint/js": "^10.0.1",
     "colyseus": "^0.16.5",
     "colyseus.js": "^0.16.22",
+    "eslint": "^10.2.0",
     "express": "^4.21.2",
-    "three": "^0.175.0"
+    "three": "^0.175.0",
+    "typescript-eslint": "^8.58.2"
   },
   "devDependencies": {
     "@types/express": "^5.0.1",
