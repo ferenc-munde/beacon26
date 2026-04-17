@@ -18,6 +18,10 @@ gameServer.define('lobby', BeaconRoom);
 
 app.use(express.static(clientDist));
 
+app.get('/health', (_request, response) => {
+  response.status(200).send('ok');
+});
+
 app.get('*', (_request, response) => {
   response.sendFile(path.join(clientDist, 'index.html'));
 });
