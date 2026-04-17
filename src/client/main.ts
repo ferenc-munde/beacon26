@@ -106,29 +106,45 @@ void tick();
 
 async function joinRoom(): Promise<void> {
   try {
-    room = await client.joinOrCreate('lobby');
+    room = await client.joinOrCreate('beacon_puzzle');
     status!.textContent = `Connected · ${room.sessionId}`;
 
-    room.state.players.onAdd((player, sessionId) => {
-      ensureRemoteCursor(sessionId, player);
-    });
+    room.onStateChange.once(() => {
+      room.state.players.onAdd((player, sessionId) => {
+        ensureRemoteCursor(sessionId, player);
+      });
 
-    room.state.players.onRemove((_player, sessionId) => {
-      const remote = remotes.get(sessionId);
-      if (!remote) {
-        return;
+      room.state.players.onRemove((_player, sessionId) => {
+        const remote = remotes.get(sessionId);
+        if (!remote) {
+          return;
+        }
+
+        scene.remove(remote.mesh);
+        remote.mesh.geometry.dispose();
+        (remote.mesh.material as MeshStandardMaterial).dispose();
+        remote.label.remove();
+        remotes.delete(sessionId);
+      });
+
+      for (const [sessionId, player] of room.state.players.entries()) {
+        ensureRemoteCursor(sessionId, player);
       }
-
-      scene.remove(remote.mesh);
-      remote.mesh.geometry.dispose();
-      (remote.mesh.material as MeshStandardMaterial).dispose();
-      remote.label.remove();
-      remotes.delete(sessionId);
     });
 
-    for (const [sessionId, player] of room.state.players.entries()) {
-      ensureRemoteCursor(sessionId, player);
-    }
+    room.onLeave(() => {
+      room = null;
+      if (status) status.textContent = 'Disconnected. Reconnecting...';
+      for (const remote of remotes.values()) {
+        scene.remove(remote.mesh);
+        remote.mesh.geometry.dispose();
+        (remote.mesh.material as MeshStandardMaterial).dispose();
+        remote.label.remove();
+      }
+      remotes.clear();
+      window.setTimeout(joinRoom, 1000);
+    });
+
   } catch (error) {
     if (status) {
       status.textContent = 'Reconnect pending';
@@ -191,7 +207,7 @@ function updateCursor(event: PointerEvent): void {
 }
 
 function syncCursor(): void {
-  if (!room) {
+  if (!room || !room.connection || !room.connection.isOpen) {
     return;
   }
 
