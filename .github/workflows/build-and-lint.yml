@@ -19,10 +19,11 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: npm
+          # no cache: npm here, since we don't want a lockfile
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Run ESLint
-        run: npx eslint .
+        run: npm run lint
+        # or: run: npx eslint .
