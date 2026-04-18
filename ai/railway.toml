@@ -1,7 +1,7 @@
 [build]
 builder = "DOCKERFILE"
-dockerfilePath = "Dockerfile"
-watchPatterns = ["app/**", "requirements.txt", "Dockerfile", "railway.toml"]
+dockerfilePath = "ai/Dockerfile"
+watchPatterns = ["ai/app/**", "ai/requirements.txt", "ai/Dockerfile", "ai/railway.toml"]
 
 [deploy]
 healthcheckPath = "/health"
