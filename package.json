@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "overrides": {
+    "picomatch": "4.0.4"
+  },
   "scripts": {
     "lint": "eslint .",
     "dev": "concurrently -k \"npm:dev:server\" \"npm:dev:client\"",
@@ -16,7 +19,6 @@
     "test:simulate": "tsx src/server/simulate.ts"
   },
   "dependencies": {
-    "picomatch": "^4.0.4",
     "@colyseus/schema": "^3.0.76",
     "@eslint/js": "^10.0.1",
     "colyseus": "^0.16.5",
