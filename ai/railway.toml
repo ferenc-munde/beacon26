@@ -1,0 +1,8 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+watchPatterns = ["app/**", "requirements.txt", "Dockerfile", "railway.toml"]
+
+[deploy]
+healthcheckPath = "/health"
+restartPolicyType = "ALWAYS"
