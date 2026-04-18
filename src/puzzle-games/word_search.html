@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Starship Word Search</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        :root { --cyan: #00f2ff; --pink: #ff00aa; --green: #00ff00; --red: #ff0000; }
+        body { margin: 0; background: #000; font-family: 'Rajdhani', sans-serif; overflow: hidden; color: var(--cyan); }
+        #bg-canvas { position: absolute; top: 0; left: 0; z-index: -1; }
+        
+        #uiContainer {
+            display: grid; grid-template-columns: 1fr 300px; grid-template-rows: 100px 1fr;
+            height: 100vh; gap: 20px; padding: 20px; box-sizing: border-box;
+        }
+        .glass {
+            background: rgba(0, 20, 40, 0.8); backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 242, 255, 0.3); box-shadow: 0 0 20px rgba(0, 242, 255, 0.1); padding: 20px;
+        }
+        
+        #topHud { grid-column: 1 / span 2; display: flex; justify-content: space-around; align-items: center; font-family: 'Orbitron'; }
+        #wordSearchContainer { display: flex; justify-content: center; align-items: center; }
+        .letter-grid { display: grid; grid-template-columns: repeat(12, 40px); gap: 5px; cursor: crosshair; }
+        
+        .letter-grid span {
+            width: 40px; height: 40px; border: 1px solid rgba(0, 242, 255, 0.1);
+            display: flex; align-items: center; justify-content: center; font-size: 1.2rem; user-select: none;
+            font-family: 'Orbitron'; transition: 0.2s;
+        }
+        .letter-grid span.selected { background: var(--cyan); color: #000; }
+        .letter-grid span.found { color: var(--pink); border-color: var(--pink); text-shadow: 0 0 10px var(--pink); font-weight: bold; }
+        
+        .timer { font-size: 1.5rem; color: var(--cyan); text-shadow: 0 0 10px var(--cyan); }
+        .word-item { margin: 10px 0; opacity: 0.5; transition: 0.3s; font-size: 1.2rem; }
+        .word-item.completed { color: var(--pink); text-decoration: line-through; opacity: 1; text-shadow: 0 0 5px var(--pink); }
+
+        .overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            display: none; flex-direction: column; justify-content: center; align-items: center;
+            z-index: 1000; backdrop-filter: blur(10px); text-align: center;
+        }
+        .overlay h1 { font-family: 'Orbitron'; font-size: 5rem; margin: 0; letter-spacing: 10px; }
+        
+        #win-overlay { background: rgba(0, 50, 0, 0.4); border-top: 4px solid var(--green); border-bottom: 4px solid var(--green); }
+        #win-overlay h1 { color: var(--green); text-shadow: 0 0 30px var(--green); animation: pulse 2s infinite; }
+        
+        #lose-overlay { background: rgba(50, 0, 0, 0.4); border-top: 4px solid var(--red); border-bottom: 4px solid var(--red); }
+        #lose-overlay h1 { color: var(--red); text-shadow: 0 0 30px var(--red); }
+        
+        .keyword { margin-top: 20px; font-size: 1.5rem; color: #fff; letter-spacing: 2px; }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        #quit-game-btn {
+            position: fixed; bottom: 24px; right: 24px; z-index: 200;
+            padding: 10px 22px; border: 1px solid #ef4444; border-radius: 6px;
+            background: rgba(239, 68, 68, 0.12); color: #ef4444; cursor: pointer;
+            font-family: 'Orbitron', sans-serif; font-size: 0.8rem; font-weight: 700;
+            letter-spacing: 0.1em; transition: background 0.2s ease, box-shadow 0.2s ease;
+        }
+        #quit-game-btn:hover {
+            background: rgba(239, 68, 68, 0.28);
+            box-shadow: 0 0 14px rgba(239, 68, 68, 0.4);
+        }
+    </style>
+</head>
+<body>
+
+<canvas id="bg-canvas"></canvas>
+
+<div id="uiContainer">
+    <div id="topHud" class="glass">
+        <div>SECTOR: DEEP-SPACE-12</div>
+        <div>SPACESHIP WORD SEARCH</div>
+        <div class="timer">TEMPORAL LOCK: <span id="time-display">01:30</span></div>
+    </div>
+    <div id="wordSearchContainer" class="glass">
+        <div id="grid" class="letter-grid"></div>
+    </div>
+    <div id="rightSidebar" class="glass">
+        <h2 style="font-family: 'Orbitron'; font-size: 1rem; border-bottom: 1px solid var(--cyan); padding-bottom: 10px;">TARGET LIST</h2>
+        <div id="itemsList"></div>
+    </div>
+</div>
+
+<div id="win-overlay" class="overlay">
+    <h1>YOU WIN!</h1>
+    <div class="keyword">SECRET KEY: AURORA</div>
+</div>
+
+<div id="lose-overlay" class="overlay">
+    <h1>LOCKDOWN</h1>
+    <div class="keyword" style="color: var(--red);">CONNECTION TERMINATED - TIMEOUT</div>
+</div>
+
+<button id="quit-game-btn" onclick="window.parent.postMessage({ type: 'EXIT_GAME' }, '*')">✕ QUIT GAME</button>
+
+<script>
+    // ── Three.js background starfield ───────────────────────────────────────
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('bg-canvas'), antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    const starGeo = new THREE.BufferGeometry();
+    const starCoords = [];
+    for(let i=0; i<3000; i++) starCoords.push((Math.random()-0.5)*100, (Math.random()-0.5)*100, (Math.random()-0.5)*100);
+    starGeo.setAttribute('position', new THREE.Float32BufferAttribute(starCoords, 3));
+    scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({color: 0x00f2ff, size: 0.1})));
+    camera.position.z = 5;
+    function animateBg() { requestAnimationFrame(animateBg); renderer.render(scene, camera); }
+    animateBg();
+
+    // ── Game state ────────────────────────────────────────────────────────────
+    let timeLeft = 90;
+    let foundCount = 0;
+    let gameActive = true;
+
+    // All 4 words are always available to find (no localStorage gate)
+    const words = ["ASTRONAUT", "GALAXY", "STAR", "GRAVITY"];
+    const fixedGridString = "ASTRONAUTXGABPLANETQRSAGSPACESHIPWLAVMRGITMZOUALOHOORKGYCNXKRCUTGRAVITYYKCSUNAVTBRJYEHMISSIONGHKTCTSTARPTXZCCKOLUHSPMOON";
+
+    const listDiv = document.getElementById('itemsList');
+    words.forEach((w) => {
+        const item = document.createElement('div');
+        item.className = 'word-item';
+        item.id = `w-${w}`;
+        item.innerText = w;
+        listDiv.appendChild(item);
+    });
+
+    // ── Grid rendering ────────────────────────────────────────────────────────
+    const gridDiv = document.getElementById('grid');
+    let isSelecting = false;
+    let selectedElements = [];
+
+    fixedGridString.split('').forEach((char) => {
+        const span = document.createElement('span');
+        span.innerText = char;
+        span.addEventListener('mousedown', () => {
+            if (!gameActive) return;
+            isSelecting = true;
+            selectedElements = [span];
+            span.classList.add('selected');
+        });
+        span.addEventListener('mouseenter', () => {
+            if (isSelecting && !selectedElements.includes(span)) {
+                selectedElements.push(span);
+                span.classList.add('selected');
+            }
+        });
+        gridDiv.appendChild(span);
+    });
+
+    window.addEventListener('mouseup', () => {
+        if (!isSelecting) return;
+        isSelecting = false;
+        const currentWord = selectedElements.map(el => el.innerText).join('');
+
+        const wordIndex = words.indexOf(currentWord);
+        if (wordIndex !== -1) {
+            const item = document.getElementById(`w-${words[wordIndex]}`);
+            if (item && !item.classList.contains('completed')) {
+                selectedElements.forEach(el => { el.classList.remove('selected'); el.classList.add('found'); });
+                item.classList.add('completed');
+                foundCount++;
+
+                if (foundCount === words.length) {
+                    gameActive = false;
+                    document.getElementById('win-overlay').style.display = 'flex';
+                    // Notify parent lobby
+                    window.parent.postMessage({ type: 'PUZZLE_SOLVED', puzzle: 'word_search' }, '*');
+                    window.dispatchEvent(new CustomEvent('puzzleSolved', { detail: { puzzle: 'word_search' } }));
+                }
+            } else {
+                selectedElements.forEach(el => el.classList.remove('selected'));
+            }
+        } else {
+            selectedElements.forEach(el => el.classList.remove('selected'));
+        }
+        selectedElements = [];
+    });
+
+    // ── Timer ────────────────────────────────────────────────────────────────
+    const timerDisplay = document.getElementById('time-display');
+    const countdown = setInterval(() => {
+        if (!gameActive) return;
+
+        timeLeft--;
+        let mins = Math.floor(timeLeft / 60);
+        let secs = timeLeft % 60;
+        timerDisplay.innerText = `0${mins}:${secs < 10 ? '0' : ''}${secs}`;
+
+        if (timeLeft <= 0) {
+            gameActive = false;
+            clearInterval(countdown);
+            document.getElementById('lose-overlay').style.display = 'flex';
+        }
+    }, 1000);
+</script>
+</body>
+</html>
