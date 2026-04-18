@@ -9,6 +9,16 @@
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+body::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background-image: url('https://grainy-gradients.vercel.app/noise.svg');
+    opacity: 0.15;
+    pointer-events: none;
+    z-index: 100;
+}
+
 body {
     background-color: #010406;
     background-image: 
@@ -46,33 +56,48 @@ body {
 .outer-frame {
     display: flex;
     flex-direction: column;
-    border: 2px solid var(--ui-border);
-    width: 98vw;
-    height: 95vh;
-    padding: 20px;
-    background: var(--panel-bg);
+    border: 1px solid var(--ui-border);
+    width: 99vw;
+    height: 98vh;
+    padding: 8px;
+    background: linear-gradient(135deg, rgba(2, 8, 12, 0.9) 0%, rgba(0, 26, 29, 0.8) 100%);
     position: relative;
-    clip-path: polygon(0 0, 95% 0, 100% 5%, 100% 100%, 5% 100%, 0 95%);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.5), inset 0 0 100px rgba(0, 242, 255, 0.05);
+    clip-path: polygon(
+        0 15px, 15px 0,
+        100% 0, 100% calc(100% - 15px),
+        calc(100% - 15px) 100%, 0 100%
+    );
 }
 
 .status-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 10px 20px;
-    margin-bottom: 15px;
-    border-bottom: 1px solid var(--ui-border);
-    background: rgba(0, 242, 255, 0.05);
+    padding: 6px 15px;
+    margin-bottom: 8px;
+    border: 1px solid var(--ui-border);
+    background: rgba(0, 242, 255, 0.03);
     font-family: 'Orbitron', sans-serif;
-    letter-spacing: 2px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    position: relative;
 }
 
-.label { color: rgba(0, 242, 255, 0.5); font-size: 0.7rem; margin-right: 5px; }
-.highlight { color: var(--neon-blue); text-shadow: 0 0 10px var(--neon-blue); }
+.status-header::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--neon-blue), transparent);
+}
 
-.content-wrapper { display: flex; flex: 1; gap: 20px; overflow: hidden; }
+.label { color: rgba(0, 242, 255, 0.4); font-size: 0.65rem; margin-right: 8px; font-weight: bold; }
+.highlight { color: var(--neon-blue); text-shadow: 0 0 15px rgba(0, 242, 255, 0.6); font-size: 0.85rem; }
 
-.left-panel { flex: 3; display: flex; flex-direction: column; gap: 20px; }
+.content-wrapper { display: flex; flex: 1; gap: 5px; overflow: hidden; }
+
+.left-panel { flex: 15; display: flex; flex-direction: column; gap: 5px; }
 
 /* Panel Aesthetics */
 .panel-border {
@@ -87,17 +112,17 @@ body {
 
 /* 2. New Panel Header Style */
 .panel-header {
-    background: rgba(0, 242, 255, 0.15);
+    background: rgba(0, 242, 255, 0.1);
     border-bottom: 1px solid var(--ui-border);
     color: var(--neon-blue);
-    padding: 5px 12px;
-    font-size: 0.75rem;
+    padding: 2px 10px;
+    font-size: 0.65rem;
     font-weight: bold;
     letter-spacing: 1px;
     text-transform: uppercase;
     display: flex;
     align-items: center;
-    height: 28px;
+    height: 22px;
 }
 
 .panel-header::before {
@@ -127,7 +152,7 @@ body {
 
 /* 5. Adjusting the Game Viewport specifically */
 #game-viewport {
-    flex: 3;
+    flex: 12;
 }
 /* Three.js Canvas needs to fill the remaining space */
 #game-viewport canvas {
@@ -145,24 +170,23 @@ body {
     100% { opacity: 1; }
 }
 
-/* Ensure panels have enough top padding so content doesn't hit the label */
+/* Ensure panels have proper layout for nested content */
 #log-viewport, #player-viewport, #game-viewport {
-    padding-top: 30px !important; 
     position: relative;
-    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
 }
 
-/* Specific fix for the Map Viewport to keep the label visible but out of the way */
-#game-viewport .static-label {
-    top: 10px;
-    left: 10px;
-    background: rgba(0, 0, 0, 0.7);
-    border: 1px solid var(--ui-border);
+#game-viewport iframe {
+    flex: 1;
+    width: 100%;
+    height: 100%;
+    border: none;
+    background: transparent;
 }
 
 /* Fix for Log List spacing */
 #log-list {
-    margin-top: 10px;
     list-style: none;
 }
 
@@ -203,23 +227,17 @@ body {
 }
 
 #log-viewport {
-    flex: 1;
-    padding: 25px 15px 15px;
-    overflow-y: auto;
+    flex: 0.8;
 }
 
-#log-list { list-style: none; font-size: 0.8rem; }
-#log-list li { 
-    margin-bottom: 6px; 
-    padding: 5px;
-    color: #88ced1; 
-    border-left: 2px solid var(--ui-border);
-    background: rgba(0, 242, 255, 0.02);
+#shell-log-list { 
+    display: flex;
+    align-items: center;
+    height: 100%;
 }
 
 #player-viewport {
-    flex: 0.8;
-    padding: 25px 15px 15px;
+    flex: 0.6;
 }
 
 .player-entry {
