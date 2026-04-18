@@ -143,16 +143,15 @@ class UIController {
             hintBtn: document.getElementById('hintBtn'),
             hintCount: document.getElementById('hintCount'),
             itemsList: document.getElementById('itemsList'),
-            loaderOverlay: document.getElementById('loaderOverlay'),
+            loaderOverlay: null, // Not used in current layout
             endOverlay: document.getElementById('endOverlay'),
             endTitle: document.getElementById('endTitle'),
             endScore: document.getElementById('endScore'),
             secretKeyword: document.getElementById('secretKeyword'),
             uiContainer: document.getElementById('uiContainer'),
-            uiLayer: document.body // For hint pulses
+            uiLayer: document.body
         };
 
-        // Ensure UI elements exist before continuing (skip in case of errors)
         if (!this.elements.timer) console.warn("UI elements not fully loaded");
     }
 
@@ -205,6 +204,12 @@ class UIController {
 
             if (this.elements.secretKeyword) {
                 this.elements.secretKeyword.style.display = state.status === 'won' ? 'block' : 'none';
+            }
+
+            if (state.status === 'won') {
+                // Notify parent lobby
+                window.parent.postMessage({ type: 'PUZZLE_SOLVED', puzzle: 'space_game' }, '*');
+                window.dispatchEvent(new CustomEvent('puzzleSolved', { detail: { puzzle: 'space_game' } }));
             }
 
             if (this.elements.uiContainer) this.elements.uiContainer.classList.add('hidden');
@@ -423,7 +428,8 @@ window.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById('restartBtn').addEventListener('click', () => {
-        location.reload(); // Simple reload for reboot
+        window.parent.postMessage({ type: 'EXIT_GAME' }, '*');
+        location.reload();
     });
 
     // Initialize scene directly (bypassing CORS local load)

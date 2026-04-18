@@ -51,6 +51,15 @@
     ">TERMINATE SESSION</button>
 </div>
 
+<!-- Always-visible QUIT button -->
+<button id="btn-quit-always" style="
+    position: fixed; bottom: 24px; right: 24px; z-index: 200;
+    padding: 10px 22px; border: 1px solid #ef4444; border-radius: 6px;
+    background: rgba(239,68,68,0.12); color: #ef4444; cursor: pointer;
+    font-family: 'Orbitron', sans-serif; font-size: 0.8rem; font-weight: 700;
+    letter-spacing: 0.1em; pointer-events: auto;
+    transition: background 0.2s ease, box-shadow 0.2s ease;">✕ QUIT GAME</button>
+
 <script type="importmap">
     {
         "imports": {
@@ -238,7 +247,7 @@
             window.displayStatus("SYSTEM CLEARED - KEY: NEBULA", "#00ff88", true);
 
             // Signal external listeners
-            window.parent.postMessage({ type: 'PUZZLE_SOLVED', puzzle: 'quantum-switchboard' }, '*');
+            window.parent.postMessage({ type: 'PUZZLE_SOLVED', puzzle: 'quantum_switchboard' }, '*');
             window.dispatchEvent(new CustomEvent('puzzleSolved', { detail: { puzzle: 'quantum-switchboard' } }));
             
             // Send to server if room exists
@@ -536,11 +545,12 @@
     });
 
     document.getElementById('btn-exit').addEventListener('click', () => {
-        console.log("Exiting game...");
         window.parent.postMessage({ type: 'EXIT_GAME' }, '*');
-        // Fallback for standalone:
         window.close();
-        document.body.innerHTML = "<div style='color: #00f2ff; text-align: center; margin-top: 20%; font-family: Orbitron;'>SESSION TERMINATED</div>";
+    });
+
+    document.getElementById('btn-quit-always').addEventListener('click', () => {
+        window.parent.postMessage({ type: 'EXIT_GAME' }, '*');
     });
 
     window.addEventListener('click', onMouseClick);
