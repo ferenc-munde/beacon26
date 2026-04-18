@@ -5,7 +5,7 @@ from .oracle import ask_oracle
 
 app = FastAPI(title="Beacon26 AI Service", version="0.2.0")
 
-
+# end points
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
