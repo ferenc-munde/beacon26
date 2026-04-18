@@ -3,6 +3,12 @@
  * Core Game Logic and Three.js Rendering
  */
 
+const isInIframe = window.self !== window.top;
+if (isInIframe) {
+    document.body.classList.add('in-shell');
+    window.parent.postMessage({ type: 'SET_STATUS', data: { text: 'TARGET_SCAN_IN_PROGRESS' } }, '*');
+}
+
 // ==========================================
 // 1. STATE MANAGEMENT (Colyseus Mock)
 // ==========================================
@@ -48,6 +54,16 @@ class GameStateManager {
                 if (this.state.objects[itemId] && !this.state.objects[itemId].found) {
                     this.state.objects[itemId].found = true;
                     this.state.score += this.state.objects[itemId].points;
+                    
+                    if (isInIframe) {
+                        const objName = this.state.objects[itemId].name;
+                        const pts = this.state.objects[itemId].points;
+                        window.parent.postMessage({ 
+                            type: 'LOG_MESSAGE', 
+                            data: { prefix: 'OBJECTIVE', message: `OBJECT_ACQUIRED: ${objName.toUpperCase()} [+${pts}]`, color: '#00ff88' } 
+                        }, '*');
+                    }
+
                     this.checkWinCondition();
                     this.notify();
                 }

@@ -21,6 +21,24 @@
                 radial-gradient(circle at 85% 30%, rgba(255, 0, 255, 0.05) 0%, transparent 50%);
         }
 
+        /* Shell Integration */
+        body.in-shell .title, 
+        body.in-shell .subtitle { display: none !important; }
+        
+        body.in-shell #clues-panel {
+            right: 15px;
+            width: 280px;
+            padding: 15px;
+            font-size: 0.9rem;
+            transform: translateY(-50%) scale(0.9);
+        }
+        
+        body.in-shell .timer {
+            top: 10px;
+            right: 10px;
+            font-size: 1.2rem;
+        }
+
         #game-container {
             position: absolute;
             top: 0;
@@ -363,6 +381,13 @@
     </div>
 
     <script>
+        // --- Shell Integration ---
+        const isInIframe = window.self !== window.top;
+        if (isInIframe) {
+            document.body.classList.add('in-shell');
+            window.parent.postMessage({ type: 'SET_STATUS', data: { text: 'TERMINAL_SESSION_ACTIVE' } }, '*');
+        }
+
         let timeLeft = 60;
         let timerInterval;
         let gameActive = true;
@@ -528,6 +553,15 @@
             
             setCellState(mesh, nextState);
             
+            if (isInIframe) {
+                const stateTxt = nextState === 2 ? 'CONFIRMED' : 'CLEAR';
+                const color = nextState === 2 ? '#00ff00' : '#70d1f4';
+                window.parent.postMessage({ 
+                    type: 'LOG_MESSAGE', 
+                    data: { prefix: 'SECURITY', message: `SECTOR_[${data.row},${data.col}]: ${stateTxt}`, color: color } 
+                }, '*');
+            }
+
             recalculateAutoFills();
             
             checkWinCondition();

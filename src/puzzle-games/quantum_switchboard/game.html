@@ -6,6 +6,21 @@
     <title>Quantum Switchboard</title>
     <style>
         body { margin: 0; background: #050505; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        
+        /* Persistent UI shell detection to avoid flicker */
+        .in-shell #ui h1, 
+        .in-shell #ui p:not(#status) { display: none !important; }
+        
+        .in-shell #ui {
+            top: auto !important;
+            bottom: 20px !important;
+            left: 20px !important;
+        }
+
+        body.in-shell #message-overlay {
+            transform: translate(-50%, -50%) scale(0.7);
+        }
+        
         #ui {
             position: absolute; top: 20px; left: 20px; color: #00f2ff;
             pointer-events: none; text-shadow: 0 0 10px #00f2ff;
@@ -26,13 +41,17 @@
         }
         canvas { display: block; }
     </style>
+    <script>
+        // Immediate detection to prevent flicker
+        if (window.self !== window.top) {
+            document.documentElement.classList.add('in-shell');
+        }
+    </script>
 </head>
 <body>
 
 <div id="ui">
-    <h1>QUANTUM SWITCHBOARD</h1>
-    <p>OBJECTIVE: ACTIVATE ALL NODES</p>
-    <p id="status">STATUS: SYNCHRONIZED</p>
+    <p id="status" style="margin: 0;">STATUS: SYNCHRONIZED</p>
     <button id="btn-hint" style="
         margin-top: 10px; padding: 8px 15px; background: rgba(0, 242, 255, 0.2); 
         border: 1px solid #ffaa00; color: #ffaa00; cursor: pointer; 
@@ -63,6 +82,12 @@
 <script type="module">
     import * as THREE from 'three';
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    // --- Shell Integration ---
+    const isInIframe = window.self !== window.top;
+    if (isInIframe) {
+        window.parent.postMessage({ type: 'SET_STATUS', data: { text: 'QUANTUM_SYNC_ACTIVE' } }, '*');
+    }
 
     // --- Configuration ---
     const GRID_SIZE = 5;
@@ -226,6 +251,13 @@
         toggleCell(x - 1, y);     // Left
         toggleCell(x, y + 1);     // Up
         toggleCell(x, y - 1);     // Down
+
+        if (isInIframe) {
+            window.parent.postMessage({ 
+                type: 'LOG_MESSAGE', 
+                data: { prefix: 'QUANTUM', message: `NODE_INTERACTION [${x},${y}]`, color: '#00f2ff' } 
+            }, '*');
+        }
 
         checkWinCondition();
     };
