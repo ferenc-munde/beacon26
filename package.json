@@ -16,6 +16,7 @@
     "test:simulate": "tsx src/server/simulate.ts"
   },
   "dependencies": {
+    "picomatch": "^4.0.4",
     "@colyseus/schema": "^3.0.76",
     "@eslint/js": "^10.0.1",
     "colyseus": "^0.16.5",
