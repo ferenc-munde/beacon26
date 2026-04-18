@@ -35,7 +35,14 @@ def infer(payload: InferenceRequest) -> InferenceResponse:
         result = "Coordinate with teammates and move one cursor at a time."
         confidence = 0.68
     else:
-        result = "Signal received. AI scaffolding is active."
+        result = (
+            "Signal received. "
+            "AI scaffolding is active."
+        )
         confidence = 0.51
 
-    return InferenceResponse(mode=payload.mode, result=result, confidence=confidence)
+    return InferenceResponse(
+        mode=payload.mode,
+        result=result,
+        confidence=confidence,
+    )
