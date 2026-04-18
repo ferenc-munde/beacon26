@@ -1,0 +1,255 @@
+:root {
+    --neon-blue: #00f2ff;
+    --dark-blue: #001a1d;
+    --panel-bg: rgba(2, 8, 12, 0.95);
+    --highlight-green: #00ff88;
+    --warning-orange: #ffaa00;
+    --ui-border: rgba(0, 242, 255, 0.3);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    background-color: #010406;
+    background-image: 
+        radial-gradient(circle at 50% 50%, rgba(0, 242, 255, 0.05) 0%, transparent 80%),
+        linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%),
+        linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+    background-size: 100% 100%, 100% 4px, 3px 100%;
+    color: var(--neon-blue);
+    font-family: 'Share Tech Mono', monospace;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    overflow: hidden;
+}
+
+/* Scanline Animation */
+.scanline {
+    width: 100%;
+    height: 100px;
+    z-index: 100;
+    background: linear-gradient(0deg, rgba(0, 0, 0, 0) 0%, rgba(0, 242, 255, 0.05) 50%, rgba(0, 0, 0, 0) 100%);
+    opacity: 0.1;
+    position: absolute;
+    bottom: 100%;
+    animation: scanline 8s linear infinite;
+    pointer-events: none;
+}
+
+@keyframes scanline {
+    0% { bottom: 100%; }
+    100% { bottom: -10%; }
+}
+
+.outer-frame {
+    display: flex;
+    flex-direction: column;
+    border: 2px solid var(--ui-border);
+    width: 98vw;
+    height: 95vh;
+    padding: 20px;
+    background: var(--panel-bg);
+    position: relative;
+    clip-path: polygon(0 0, 95% 0, 100% 5%, 100% 100%, 5% 100%, 0 95%);
+}
+
+.status-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 20px;
+    margin-bottom: 15px;
+    border-bottom: 1px solid var(--ui-border);
+    background: rgba(0, 242, 255, 0.05);
+    font-family: 'Orbitron', sans-serif;
+    letter-spacing: 2px;
+}
+
+.label { color: rgba(0, 242, 255, 0.5); font-size: 0.7rem; margin-right: 5px; }
+.highlight { color: var(--neon-blue); text-shadow: 0 0 10px var(--neon-blue); }
+
+.content-wrapper { display: flex; flex: 1; gap: 20px; overflow: hidden; }
+
+.left-panel { flex: 3; display: flex; flex-direction: column; gap: 20px; }
+
+/* Panel Aesthetics */
+.panel-border {
+    position: relative;
+    border: 1px solid var(--ui-border);
+    background: rgba(0, 0, 0, 0.4);
+    box-shadow: inset 0 0 20px rgba(0, 242, 255, 0.05);
+}
+
+/* Improved Label Positioning */
+/* 1. Remove the old .static-label styles entirely */
+
+/* 2. New Panel Header Style */
+.panel-header {
+    background: rgba(0, 242, 255, 0.15);
+    border-bottom: 1px solid var(--ui-border);
+    color: var(--neon-blue);
+    padding: 5px 12px;
+    font-size: 0.75rem;
+    font-weight: bold;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    height: 28px;
+}
+
+.panel-header::before {
+    content: "■";
+    margin-right: 8px;
+    font-size: 0.6rem;
+    animation: flicker 2s infinite;
+}
+
+/* 3. Panel Container Logic */
+.panel-border {
+    position: relative;
+    border: 1px solid var(--ui-border);
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    flex-direction: column; /* Stack header then content */
+    overflow: hidden; /* Keep corners and headers contained */
+}
+
+/* 4. Content Area Logic */
+.scroll-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 15px;
+    position: relative;
+}
+
+/* 5. Adjusting the Game Viewport specifically */
+#game-viewport {
+    flex: 3;
+}
+/* Three.js Canvas needs to fill the remaining space */
+#game-viewport canvas {
+    display: block;
+}
+
+/* 6. Corner Fixes (Moving them to stay in the corners of the border) */
+.corner-tl { top: 0; left: 0; border-right: 0; border-bottom: 0; width: 10px; height: 10px; }
+.corner-tr { top: 0; right: 0; border-left: 0; border-bottom: 0; width: 10px; height: 10px; }
+
+/* 7. Subtle Flicker Animation for the Header icon */
+@keyframes flicker {
+    0% { opacity: 1; }
+    50% { opacity: 0.4; }
+    100% { opacity: 1; }
+}
+
+/* Ensure panels have enough top padding so content doesn't hit the label */
+#log-viewport, #player-viewport, #game-viewport {
+    padding-top: 30px !important; 
+    position: relative;
+    overflow-y: auto;
+}
+
+/* Specific fix for the Map Viewport to keep the label visible but out of the way */
+#game-viewport .static-label {
+    top: 10px;
+    left: 10px;
+    background: rgba(0, 0, 0, 0.7);
+    border: 1px solid var(--ui-border);
+}
+
+/* Fix for Log List spacing */
+#log-list {
+    margin-top: 10px;
+    list-style: none;
+}
+
+/* Decorative Corners */
+.corner-tl, .corner-tr, .corner-bl, .corner-br {
+    position: absolute;
+    width: 15px;
+    height: 15px;
+    border: 2px solid var(--neon-blue);
+}
+.corner-tl { top: -2px; left: -2px; border-right: 0; border-bottom: 0; }
+.corner-tr { top: -2px; right: -2px; border-left: 0; border-bottom: 0; }
+.corner-bl { bottom: -2px; left: -2px; border-right: 0; border-top: 0; }
+.corner-br { bottom: -2px; right: -2px; border-left: 0; border-top: 0; }
+
+/* Add/Update these in style.css */
+
+#game-viewport {
+    display: flex;
+    flex-direction: column;
+}
+
+/* This ensures the canvas takes up every pixel of the remaining space */
+#game-viewport canvas {
+    flex: 1;
+    width: 100% !important;
+    height: auto !important;
+    display: block;
+}
+
+/* Ensure the scroll-content doesn't block clicks */
+.scroll-content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 15px;
+    /* This ensures mouse events reach the elements inside */
+    position: relative; 
+}
+
+#log-viewport {
+    flex: 1;
+    padding: 25px 15px 15px;
+    overflow-y: auto;
+}
+
+#log-list { list-style: none; font-size: 0.8rem; }
+#log-list li { 
+    margin-bottom: 6px; 
+    padding: 5px;
+    color: #88ced1; 
+    border-left: 2px solid var(--ui-border);
+    background: rgba(0, 242, 255, 0.02);
+}
+
+#player-viewport {
+    flex: 0.8;
+    padding: 25px 15px 15px;
+}
+
+.player-entry {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border: 1px solid rgba(0, 242, 255, 0.1);
+    padding: 12px;
+    margin-bottom: 10px;
+    background: rgba(0, 242, 255, 0.05);
+    transition: all 0.3s ease;
+}
+
+.player-entry:hover { 
+    background: rgba(0, 242, 255, 0.15); 
+    border-color: var(--neon-blue);
+    transform: translateX(5px);
+}
+
+.player-entry::before {
+    content: "";
+    width: 10px;
+    height: 10px;
+    background: var(--neon-blue);
+    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+    box-shadow: 0 0 8px var(--neon-blue);
+}
+
+/* Scrollbar Styling */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--ui-border); }
+::-webkit-scrollbar-thumb:hover { background: var(--neon-blue); }

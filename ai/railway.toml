@@ -1,8 +1,0 @@
-[build]
-builder = "DOCKERFILE"
-dockerfilePath = "ai/Dockerfile"
-watchPatterns = ["ai/app/**", "ai/requirements.txt", "ai/Dockerfile", "ai/railway.toml"]
-
-[deploy]
-healthcheckPath = "/health"
-restartPolicyType = "ALWAYS"
