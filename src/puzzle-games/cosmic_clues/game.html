@@ -92,8 +92,6 @@
         }
 
         .suspect-label-text {
-            writing-mode: vertical-rl;
-            transform: rotate(180deg);
             font-size: 18px;
             font-family: 'Orbitron', sans-serif;
             color: #00ffff;
@@ -367,16 +365,16 @@
 
     <div id="win-overlay">
         <h1>ACCESS GRANTED</h1>
-        <div class="secret-keyword">Secret keyword: Add keyword here</div>
+        <div class="secret-keyword">Secret keyword: ASTRONAUT</div>
     </div>
 
     <div id="clues-panel">
         <h2>Intercepted Comms</h2>
         <ul>
-            <li>Professor Plum's restricted armory section requires cryogenic containment.</li>
-            <li>The female suspects (Mrs. Peacock and Agent Scarlet) were assigned the two ranged weapons (Sonic Pistol and Fusion Coil).</li>
-            <li>Agent Scarlet's clearance does not permit her to use the Sonic Pistol.</li>
-            <li>Dr. Green abhors energy-based tech, preferring simple physical impact weapons.</li>
+            <li>MR. D's restricted armory section requires cryogenic containment.</li>
+            <li>The female suspects (MS. C and MS. E) were assigned the two ranged weapons (Sonic Pistol and Fusion Coil).</li>
+            <li>MS. E's clearance does not permit her to use the Sonic Pistol.</li>
+            <li>MR. A abhors energy-based tech, preferring simple physical impact weapons.</li>
         </ul>
     </div>
 
@@ -392,15 +390,15 @@
         let timerInterval;
         let gameActive = true;
 
-        const suspects = ["Dr. Green", "Colonel Mustard", "Mrs. Peacock", "Professor Plum", "Agent Scarlet"];
+        const suspects = ["MR. A", "MR. B", "MS. C", "MR. D", "MS. E"];
         const weapons = ["Sonic Pistol", "Cryo-Saber", "Kinetic Pipe", "Fusion Coil", "Gamma Lash"];
 
         const solution = [
-            {row: 0, col: 2}, // Peacock - Sonic Pistol
-            {row: 1, col: 3}, // Plum - Cryo-Saber
-            {row: 2, col: 0}, // Green - Kinetic Pipe
-            {row: 3, col: 4}, // Scarlet - Fusion Coil
-            {row: 4, col: 1}  // Mustard - Gamma Lash
+            {row: 0, col: 2}, // MR. C - Sonic Pistol
+            {row: 1, col: 3}, // MR. D - Cryo-Saber
+            {row: 2, col: 0}, // MR. A - Kinetic Pipe
+            {row: 3, col: 4}, // MR. E - Fusion Coil
+            {row: 4, col: 1}  // MR. B - Gamma Lash
         ];
 
         // Scene setup

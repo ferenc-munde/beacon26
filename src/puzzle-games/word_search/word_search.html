@@ -56,7 +56,38 @@
             50% { transform: scale(1.05); }
             100% { transform: scale(1); }
         }
+
+        /* Shell Integration */
+        .in-shell #uiContainer {
+            height: 100vh;
+            padding: 10px;
+            gap: 10px;
+            transform: scale(0.95);
+            transform-origin: center;
+        }
+        .in-shell #topHud > div:nth-child(1),
+        .in-shell #topHud > div:nth-child(2) {
+            display: none !important;
+        }
+        .in-shell #topHud {
+            justify-content: flex-end;
+            grid-column: 1 / span 2;
+        }
+        .in-shell .letter-grid {
+            grid-template-columns: repeat(12, 35px);
+            gap: 4px;
+        }
+        .in-shell .letter-grid span {
+            width: 35px;
+            height: 35px;
+            font-size: 1rem;
+        }
     </style>
+    <script>
+        if (window.self !== window.top) {
+            document.documentElement.classList.add('in-shell');
+        }
+    </script>
 </head>
 <body>
 
@@ -100,8 +131,21 @@
     starGeo.setAttribute('position', new THREE.Float32BufferAttribute(starCoords, 3));
     scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({color: 0x00f2ff, size: 0.1})));
     camera.position.z = 5;
+    
+    window.addEventListener("resize", () => {
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+    });
+
     function animate() { requestAnimationFrame(animate); renderer.render(scene, camera); }
     animate();
+
+    const isInIframe = window.self !== window.top;
+    if (isInIframe) {
+        document.body.classList.add('in-shell');
+        window.parent.postMessage({ type: 'SET_STATUS', data: { text: 'DATA_MINING_PROTOCOL' } }, '*');
+    }
 
     let timeLeft = 90;
     let foundCount = 0;

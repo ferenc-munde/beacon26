@@ -174,6 +174,7 @@ function initGame(container) {
                 const winStatus = checkWinConditions();
                 if (winStatus === "WIN") {
                     isGameWon = true;
+                    document.getElementById('win-overlay').style.display = 'flex';
                     shellStatus(`SYSTEM_CLEARED // ACCESS_KEY: <span style="color:#fff; text-shadow: 0 0 10px #fff;">PLUTO</span>`, true);
                     
                     const winLight = new THREE.PointLight(0x00ff00, 10, 50);
