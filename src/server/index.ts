@@ -38,6 +38,37 @@ app.get('/game', (_req, res) => {
   res.sendFile(path.join(clientDist, 'game.html'));
 });
 
+
+// Test endpoint to check if we can reach the AI service
+app.get('/api/test-ai', async (_request, response) => {
+  const aiBaseUrl = process.env.AI_BASE_URL || 'http://beacon26-ai.railway.internal:8080';
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+    const result = await fetch(`${aiBaseUrl}/health`, { signal: controller.signal });
+    clearTimeout(timeoutId);
+    const text = await result.text();
+
+    response.status(200).json({
+      success: true,
+      aiBaseUrl,
+      aiStatus: result.status,
+      aiResponse: text
+    });
+  } catch (error) {
+    response.status(503).json({
+      success: false,
+      aiBaseUrl,
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+});
+
+app.get('*', (_request, response) => {
+  response.sendFile(path.join(clientDist, 'index.html'));
+});
+
 // ── Landing page at / ────────────────────────────────────────────────────────
 // Vite builds index.html → dist/index.html (first, default)
 app.get('/', (_req, res) => {
