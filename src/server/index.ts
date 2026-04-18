@@ -38,7 +38,7 @@ app.get('/game', (_req, res) => {
   res.sendFile(path.join(clientDist, 'game.html'));
 });
 
-<<<<<<< HEAD
+
 // Test endpoint to check if we can reach the AI service
 app.get('/api/test-ai', async (_request, response) => {
   const aiBaseUrl = process.env.AI_BASE_URL || 'http://beacon26-ai.railway.internal:8080';
@@ -67,7 +67,8 @@ app.get('/api/test-ai', async (_request, response) => {
 
 app.get('*', (_request, response) => {
   response.sendFile(path.join(clientDist, 'index.html'));
-=======
+});
+
 // ── Landing page at / ────────────────────────────────────────────────────────
 // Vite builds index.html → dist/index.html (first, default)
 app.get('/', (_req, res) => {
@@ -78,7 +79,6 @@ app.get('/', (_req, res) => {
 // (puzzle sub-routes like /puzzles/star_map/ are handled above)
 app.get('*', (_req, res) => {
   res.sendFile(path.join(clientDist, 'index.html'));
->>>>>>> origin/main
 });
 
 httpServer.listen(port, () => {
