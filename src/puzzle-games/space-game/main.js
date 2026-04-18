@@ -113,20 +113,20 @@ const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
 function playBeep() {
     if (audioCtx.state === 'suspended') audioCtx.resume();
-    
+
     const oscillator = audioCtx.createOscillator();
     const gainNode = audioCtx.createGain();
-    
+
     oscillator.type = 'sine';
     oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // A5
     oscillator.frequency.exponentialRampToValueAtTime(1760, audioCtx.currentTime + 0.1); // Slide up
-    
+
     gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
     gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
-    
+
     oscillator.connect(gainNode);
     gainNode.connect(audioCtx.destination);
-    
+
     oscillator.start();
     oscillator.stop(audioCtx.currentTime + 0.1);
 }
@@ -151,7 +151,7 @@ class UIController {
             uiContainer: document.getElementById('uiContainer'),
             uiLayer: document.body // For hint pulses
         };
-        
+
         // Ensure UI elements exist before continuing (skip in case of errors)
         if (!this.elements.timer) console.warn("UI elements not fully loaded");
     }
@@ -202,7 +202,7 @@ class UIController {
             this.elements.endTitle.textContent = state.status === 'won' ? 'YOU WIN' : 'GAME OVER';
             this.elements.endTitle.style.color = state.status === 'won' ? '#00ffaa' : '#ff003c';
             this.elements.endScore.textContent = `Final Score: ${state.score}`;
-            
+
             if (this.elements.secretKeyword) {
                 this.elements.secretKeyword.style.display = state.status === 'won' ? 'block' : 'none';
             }
@@ -223,35 +223,56 @@ class SceneManager {
     constructor(gameStateManager) {
         this.gameStateManager = gameStateManager;
         this.scene = new THREE.Scene();
-        
-        // Orthographic Camera for 2D mapping
-        const aspect = window.innerWidth / window.innerHeight;
-        this.camera = new THREE.OrthographicCamera(-aspect, aspect, 1, -1, 0.1, 100);
+
+        // ZSENIÁLIS TRÜKK: Normalizált kamera (-1-től 1-ig). 
+        // Így a vászon automatikusan skálázza a hitbpxokat, nem kell számolgatni!
+        this.camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 100);
         this.camera.position.z = 1;
 
         this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-        this.renderer.setClearColor(0x000000, 0); // Transparent background
-        this.renderer.setSize(window.innerWidth, window.innerHeight);
+        this.renderer.setClearColor(0x000000, 0); // Teljesen átlátszó
         this.renderer.setPixelRatio(window.devicePixelRatio);
-        document.body.insertBefore(this.renderer.domElement, document.body.firstChild);
+
+        // A vásznat abszolút pozícióba tesszük, hogy rátapadjon a képre
+        this.renderer.domElement.style.position = 'absolute';
+        this.renderer.domElement.style.top = '0';
+        this.renderer.domElement.style.left = '0';
+
+        // Beillesztjük a vásznat a kép fölé (feltételezve, hogy a képnek van konténere)
+        const bgImage = document.getElementById('bg-image');
+        if (bgImage && bgImage.parentElement) {
+            bgImage.parentElement.style.position = 'relative'; // Fontos a fedéshez
+            bgImage.parentElement.appendChild(this.renderer.domElement);
+        } else {
+            document.body.appendChild(this.renderer.domElement);
+        }
 
         this.raycaster = new THREE.Raycaster();
         this.mouse = new THREE.Vector2();
-        
-        this.hitboxes = {}; // Store hitboxes to update their state
-        
+        this.hitboxes = {};
+
         this.setupEvents();
+
+        // Beállítjuk a kezdeti méretet a kép alapján
+        setTimeout(() => this.onWindowResize(), 100);
+
         this.animate();
     }
 
     setupEvents() {
         window.addEventListener('resize', this.onWindowResize.bind(this));
-        
-        // Raycasting click event
+
+        // Kattintás érzékelése
         this.renderer.domElement.addEventListener('pointerdown', (e) => {
-            // Calculate mouse position in normalized device coordinates (-1 to +1)
-            this.mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
-            this.mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+            const rect = this.renderer.domElement.getBoundingClientRect();
+
+            // Kiszámoljuk az egeret a vászon méretéhez képest
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            // Normalizáljuk -1 és +1 közé
+            this.mouse.x = (x / rect.width) * 2 - 1;
+            this.mouse.y = -(y / rect.height) * 2 + 1;
 
             this.raycaster.setFromCamera(this.mouse, this.camera);
             const intersects = this.raycaster.intersectObjects(this.scene.children);
@@ -259,73 +280,68 @@ class SceneManager {
             for (let i = 0; i < intersects.length; i++) {
                 const object = intersects[i].object;
                 if (object.userData && object.userData.isHitbox) {
-                    // Dispatch intent to GameStateManager instead of mutating locally
                     this.gameStateManager.dispatchIntent('ITEM_CLICKED', object.userData.id);
-                    break; // Only click top-most or first valid
+                    break;
                 }
             }
         });
     }
 
     initializeScene(objectsConfig) {
-        // Calculate hitbox positions
-        const planeWidth = 2 * this.camera.right;
-        const planeHeight = 2 * this.camera.top;
-        
+        // A normalizált sík pontosan 2 egység széles és 2 egység magas
+        const planeWidth = 2;
+        const planeHeight = 2;
+
         for (const key in objectsConfig) {
             const config = objectsConfig[key];
-            
+
             const w = planeWidth * config.pctWidth;
             const h = planeHeight * config.pctHeight;
-            
-            // Position relative to top-left
-            const x = -planeWidth/2 + (planeWidth * config.pctX) + (w/2);
-            const y = planeHeight/2 - (planeHeight * config.pctY) - (h/2);
+
+            // Pozíció a bal felső sarokból (-1, 1) számolva
+            const x = -1 + (planeWidth * config.pctX) + (w / 2);
+            const y = 1 - (planeHeight * config.pctY) - (h / 2);
 
             const hitboxGeo = new THREE.PlaneGeometry(w, h);
-            // Invisible material for hitbox
-            const hitboxMat = new THREE.MeshBasicMaterial({ 
-                color: 0x00ff00, 
-                transparent: true, 
-                opacity: 0.0 // Set to 0.0 for invisible
+            const hitboxMat = new THREE.MeshBasicMaterial({
+                color: 0xff0000,
+                transparent: true,
+                opacity: 0.0 // TIPP: Állítsd 0.4-re ideiglenesen, ha látni akarod a zónákat!
             });
-            
+
             const hitboxMesh = new THREE.Mesh(hitboxGeo, hitboxMat);
             hitboxMesh.position.set(x, y, 0);
             hitboxMesh.userData = { isHitbox: true, id: config.id };
-            
+
             this.scene.add(hitboxMesh);
             this.hitboxes[config.id] = hitboxMesh;
         }
 
-        // Game is ready to start
         this.gameStateManager.dispatchIntent('START_GAME');
     }
 
     onWindowResize() {
-        // To keep logic simple and background filling screen, we reset camera aspect
-        const aspect = window.innerWidth / window.innerHeight;
-        this.camera.left = -aspect;
-        this.camera.right = aspect;
-        this.camera.top = 1;
-        this.camera.bottom = -1;
-        this.camera.updateProjectionMatrix();
-        this.renderer.setSize(window.innerWidth, window.innerHeight);
-        
-        // Note: For a true responsive game, we would re-scale the background plane 
-        // and hitboxes here based on new dimensions. For simplicity in this demo,
-        // assume fixed window size after start or minor adjustments.
+        const bgImage = document.getElementById('bg-image');
+        if (!bgImage) return;
+
+        // A Three.js vászon PONTOSAN felveszi a HTML kép aktuális pixelméretét
+        const w = bgImage.clientWidth;
+        const h = bgImage.clientHeight;
+
+        this.renderer.setSize(w, h);
+
+        // A kamerához nem kell nyúlni, mert a -1..1 arány miatt automatikusan nyúlik!
     }
 
     update(state) {
-        // Disable hitboxes for found objects so they can't be clicked again
+        // Dobozok eltüntetése, ha megvannak
         for (const key in state.objects) {
             if (state.objects[key].found && this.hitboxes[key]) {
                 this.hitboxes[key].visible = false;
             }
         }
 
-        // Show hint pulse if requested
+        // Hint karika
         if (state.lastHintTarget && state.lastHintTarget.id !== this.lastPulseTargetId) {
             this.lastPulseTargetId = state.lastHintTarget.id;
             this.createHintPulse(state.lastHintTarget);
@@ -338,16 +354,16 @@ class SceneManager {
         const hitbox = this.hitboxes[objData.id];
         if (!hitbox) return;
 
-        // Base ring radius relative to camera frustum size
-        const radius = this.camera.top * 0.05; 
+        // Karika a normalizált méretekhez igazítva
+        const radius = 0.05;
         const ringGeo = new THREE.RingGeometry(radius * 0.8, radius, 32);
         const ringMat = new THREE.MeshBasicMaterial({ color: 0xff003c, transparent: true, opacity: 1, side: THREE.DoubleSide });
         const ring = new THREE.Mesh(ringGeo, ringMat);
-        
+
         ring.position.copy(hitbox.position);
         ring.position.z = 0.1;
         this.scene.add(ring);
-        
+
         if (!this.pulses) this.pulses = [];
         this.pulses.push({
             mesh: ring,
@@ -358,14 +374,14 @@ class SceneManager {
 
     animate() {
         requestAnimationFrame(this.animate.bind(this));
-        
+
         if (this.pulses) {
             const now = Date.now();
             for (let i = this.pulses.length - 1; i >= 0; i--) {
                 const p = this.pulses[i];
                 const elapsed = now - p.startTime;
                 const progress = elapsed / p.duration;
-                
+
                 if (progress >= 1) {
                     this.scene.remove(p.mesh);
                     this.pulses.splice(i, 1);
