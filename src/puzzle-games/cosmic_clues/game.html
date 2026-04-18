@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sci-Fi Logic Grid Puzzle</title>
+    <!-- Use Google Fonts for modern typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #0a0f1a;
+            color: #ffffff;
+            font-family: 'Rajdhani', sans-serif;
+            overflow: hidden;
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(0, 255, 255, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 85% 30%, rgba(255, 0, 255, 0.05) 0%, transparent 50%);
+        }
+
+        /* Shell Integration */
+        body.in-shell .title, 
+        body.in-shell .subtitle { display: none !important; }
+        
+        body.in-shell #clues-panel {
+            right: 15px;
+            width: 280px;
+            padding: 15px;
+            font-size: 0.9rem;
+            transform: translateY(-50%) scale(0.9);
+        }
+        
+        body.in-shell .timer {
+            top: 10px;
+            right: 10px;
+            font-size: 1.2rem;
+        }
+
+        #game-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* Wrap Grid UI elements */
+        #grid-ui-wrapper {
+            position: absolute;
+            z-index: 2;
+            pointer-events: none;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        #suspects-labels {
+            position: absolute;
+            display: flex;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 150px; 
+            transform: translateY(-100%);
+            pointer-events: none;
+        }
+
+        .suspect-label-container {
+            flex: 0 0 80px; 
+            margin-right: 6px; 
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+        }
+        .suspect-label-container:last-child {
+            margin-right: 0;
+        }
+
+        .suspect-label-text {
+            writing-mode: vertical-rl;
+            transform: rotate(180deg);
+            font-size: 18px;
+            font-family: 'Orbitron', sans-serif;
+            color: #00ffff;
+            text-shadow: 0 0 8px rgba(0, 255, 255, 0.6);
+            white-space: nowrap;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+
+        #weapons-labels {
+            position: absolute;
+            display: flex;
+            flex-direction: column;
+            left: 0;
+            top: 0;
+            height: 100%; 
+            transform: translateX(-100%);
+            pointer-events: none;
+        }
+
+        .weapon-label-container {
+            flex: 0 0 80px;
+            margin-bottom: 6px; 
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 20px;
+        }
+        .weapon-label-container:last-child {
+            margin-bottom: 0;
+        }
+
+        .weapon-label-text {
+            font-size: 18px;
+            font-family: 'Orbitron', sans-serif;
+            color: #ff00ff;
+            text-shadow: 0 0 8px rgba(255, 0, 255, 0.6);
+            white-space: nowrap;
+            letter-spacing: 1px;
+        }
+
+        #cells-labels-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: grid;
+            grid-template-columns: repeat(5, 80px);
+            grid-template-rows: repeat(5, 80px);
+            gap: 6px;
+            pointer-events: none;
+        }
+
+        /* Clues panel */
+        #clues-panel {
+            position: absolute;
+            right: 30px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 350px;
+            padding: 25px;
+            background: rgba(10, 15, 26, 0.75);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(0, 255, 255, 0.2);
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 255, 255, 0.1), inset 0 0 20px rgba(0, 255, 255, 0.05);
+            z-index: 10;
+        }
+
+        #clues-panel h2 {
+            margin-top: 0;
+            color: #00ffff;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.6);
+            font-size: 1.5rem;
+            font-family: 'Orbitron', sans-serif;
+            border-bottom: 2px solid rgba(0, 255, 255, 0.3);
+            padding-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        #clues-panel ul {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        #clues-panel li {
+            margin-bottom: 18px;
+            line-height: 1.5;
+            font-size: 1.1rem;
+            position: relative;
+            padding-left: 24px;
+            color: #e0e0e0;
+        }
+
+        #clues-panel li::before {
+            content: '►';
+            position: absolute;
+            left: 0;
+            color: #ff00ff;
+            text-shadow: 0 0 8px rgba(255, 0, 255, 0.6);
+            font-size: 0.9rem;
+            top: 2px;
+        }
+
+        .title {
+            position: absolute;
+            top: 30px;
+            left: 40px;
+            font-size: 32px;
+            color: #ffffff;
+            text-shadow: 0 0 15px rgba(255, 255, 255, 0.8), 0 0 30px #00ffff;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            z-index: 10;
+            pointer-events: none;
+            letter-spacing: 3px;
+        }
+        
+        .subtitle {
+            position: absolute;
+            top: 75px;
+            left: 40px;
+            font-size: 16px;
+            color: #00ffff;
+            opacity: 0.8;
+            font-family: 'Rajdhani', sans-serif;
+            letter-spacing: 2px;
+            z-index: 10;
+            pointer-events: none;
+        }
+        
+        /* Cell Labels injected dynamically via Grid */
+        .grid-cell-label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 44px;
+            font-weight: bold;
+            pointer-events: none;
+            transition: all 0.2s ease;
+        }
+
+        #win-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            pointer-events: none;
+            width: 100%;
+            padding: 40px 0;
+            background: rgba(0, 255, 0, 0.15);
+            backdrop-filter: blur(8px);
+            border-top: 2px solid rgba(0, 255, 0, 0.5);
+            border-bottom: 2px solid rgba(0, 255, 0, 0.5);
+            box-shadow: 0 0 50px rgba(0, 255, 0, 0.2);
+        }
+
+        #win-overlay h1 {
+            font-size: 80px;
+            color: #00ff00;
+            text-shadow: 0 0 20px #00ff00, 0 0 40px #00ff00;
+            font-family: 'Orbitron', sans-serif;
+            margin: 0;
+            text-transform: uppercase;
+            animation: pulse-win 2s infinite;
+            letter-spacing: 5px;
+        }
+
+        @keyframes pulse-win {
+            0% { transform: scale(1); text-shadow: 0 0 20px #00ff00; }
+            50% { transform: scale(1.05); text-shadow: 0 0 40px #00ff00, 0 0 80px #00ff00; }
+            100% { transform: scale(1); text-shadow: 0 0 20px #00ff00; }
+        }
+
+        .secret-keyword {
+            margin-top: 20px;
+            font-size: 24px;
+            color: #ffffff;
+            font-family: 'Rajdhani', sans-serif;
+            text-shadow: 0 0 10px #ffffff;
+            letter-spacing: 2px;
+        }
+
+        .timer {
+            position: absolute;
+            top: 30px;
+            right: 40px;
+            font-size: 28px;
+            color: #00ffff;
+            font-family: 'Orbitron', sans-serif;
+            text-shadow: 0 0 10px #00ffff;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        #lose-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            pointer-events: all;
+            width: 100%;
+            padding: 40px 0;
+            background: rgba(255, 0, 0, 0.15);
+            backdrop-filter: blur(8px);
+            border-top: 2px solid rgba(255, 0, 0, 0.5);
+            border-bottom: 2px solid rgba(255, 0, 0, 0.5);
+            box-shadow: 0 0 50px rgba(255, 0, 0, 0.2);
+        }
+
+        #lose-overlay h1 {
+            font-size: 80px;
+            color: #ff0000;
+            text-shadow: 0 0 20px #ff0000, 0 0 40px #ff0000;
+            font-family: 'Orbitron', sans-serif;
+            margin: 0;
+            text-transform: uppercase;
+            animation: pulse-lose 2s infinite;
+            letter-spacing: 5px;
+        }
+
+        @keyframes pulse-lose {
+            0% { transform: scale(1); text-shadow: 0 0 20px #ff0000; }
+            50% { transform: scale(1.05); text-shadow: 0 0 40px #ff0000, 0 0 80px #ff0000; }
+            100% { transform: scale(1); text-shadow: 0 0 20px #ff0000; }
+        }
+
+        @keyframes pulse {
+            0% { text-shadow: 0 0 10px rgba(0, 255, 0, 0.5); transform: scale(1); }
+            50% { text-shadow: 0 0 20px rgba(0, 255, 0, 0.9); transform: scale(1.1); }
+            100% { text-shadow: 0 0 10px rgba(0, 255, 0, 0.5); transform: scale(1); }
+        }
+    </style>
+    <!-- Include Three.js via CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+
+    <div class="title">TERMINAL ZERO</div>
+    <div class="subtitle">SECURITY CLEARANCE REQUIRED // SUSPECT PROFILING</div>
+
+    <div id="game-container">
+        <div id="canvas-container"></div>
+        
+        <div id="grid-ui-wrapper">
+            <div id="suspects-labels"></div>
+            <div id="weapons-labels"></div>
+            <div id="cells-labels-container"></div>
+        </div>
+    </div>
+
+    <div class="timer">TEMPORAL LOCK: <span id="time-display">01:00</span></div>
+
+    <div id="lose-overlay">
+        <h1>SYSTEM LOCKDOWN</h1>
+        <div class="secret-keyword" style="color: #ffaa00; text-shadow: 0 0 10px #ffaa00;">Timeout - Access Denied</div>
+    </div>
+
+    <div id="win-overlay">
+        <h1>ACCESS GRANTED</h1>
+        <div class="secret-keyword">Secret keyword: Add keyword here</div>
+    </div>
+
+    <div id="clues-panel">
+        <h2>Intercepted Comms</h2>
+        <ul>
+            <li>Professor Plum's restricted armory section requires cryogenic containment.</li>
+            <li>The female suspects (Mrs. Peacock and Agent Scarlet) were assigned the two ranged weapons (Sonic Pistol and Fusion Coil).</li>
+            <li>Agent Scarlet's clearance does not permit her to use the Sonic Pistol.</li>
+            <li>Dr. Green abhors energy-based tech, preferring simple physical impact weapons.</li>
+        </ul>
+    </div>
+
+    <script>
+        // --- Shell Integration ---
+        const isInIframe = window.self !== window.top;
+        if (isInIframe) {
+            document.body.classList.add('in-shell');
+            window.parent.postMessage({ type: 'SET_STATUS', data: { text: 'TERMINAL_SESSION_ACTIVE' } }, '*');
+        }
+
+        let timeLeft = 60;
+        let timerInterval;
+        let gameActive = true;
+
+        const suspects = ["Dr. Green", "Colonel Mustard", "Mrs. Peacock", "Professor Plum", "Agent Scarlet"];
+        const weapons = ["Sonic Pistol", "Cryo-Saber", "Kinetic Pipe", "Fusion Coil", "Gamma Lash"];
+
+        const solution = [
+            {row: 0, col: 2}, // Peacock - Sonic Pistol
+            {row: 1, col: 3}, // Plum - Cryo-Saber
+            {row: 2, col: 0}, // Green - Kinetic Pipe
+            {row: 3, col: 4}, // Scarlet - Fusion Coil
+            {row: 4, col: 1}  // Mustard - Gamma Lash
+        ];
+
+        // Scene setup
+        const container = document.getElementById('canvas-container');
+        const scene = new THREE.Scene();
+        
+        // Orthographic camera
+        const camera = new THREE.OrthographicCamera(
+            window.innerWidth / -2, window.innerWidth / 2, 
+            window.innerHeight / 2, window.innerHeight / -2, 
+            0.1, 1000
+        );
+        camera.position.z = 10;
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setPixelRatio(window.devicePixelRatio);
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setClearColor(0x0a0f1a, 0); 
+        container.appendChild(renderer.domElement);
+
+        // Grid config
+        const gridSize = 5;
+        const cellSize = 80;
+        const cellGap = 6;
+        const totalSize = cellSize + cellGap;
+        
+        const cells = [];
+        
+        // Materials (Empty, Eliminated, Confirmed)
+        // Ensure values from prompt rules: Empty=Cyan(0.2), Elim(X)=Red(0.8), Conf(Y)=Green(0.9)
+        const emptyMat = new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.2, side: THREE.DoubleSide });
+        const eliminatedMat = new THREE.MeshBasicMaterial({ color: 0xff0000, transparent: true, opacity: 0.8, side: THREE.DoubleSide });
+        const confirmedMat = new THREE.MeshBasicMaterial({ color: 0x00ff00, transparent: true, opacity: 0.9, side: THREE.DoubleSide });
+        const flashMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 1.0, side: THREE.DoubleSide });
+
+        const geometry = new THREE.PlaneGeometry(cellSize, cellSize);
+        
+        // Inner darker area for "display terminal" visual
+        const innerGeo = new THREE.PlaneGeometry(cellSize - 6, cellSize - 6);
+        const innerMat = new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.4, side: THREE.DoubleSide });
+
+        const gridGroup = new THREE.Group();
+        
+        const gridWidth = gridSize * totalSize - cellGap;
+        const gridHeight = gridSize * totalSize - cellGap;
+        
+        const startX = -gridWidth / 2 + cellSize / 2;
+        const startY = gridHeight / 2 - cellSize / 2;
+        
+        const uiWrapper = document.getElementById('grid-ui-wrapper');
+        uiWrapper.style.width = gridWidth + 'px';
+        uiWrapper.style.height = gridHeight + 'px';
+
+        const cellsContainer = document.getElementById('cells-labels-container');
+
+        for (let row = 0; row < gridSize; row++) {
+            for (let col = 0; col < gridSize; col++) {
+                // Main highlight/outline cell
+                const material = emptyMat.clone();
+                const mesh = new THREE.Mesh(geometry, material);
+                
+                // Inner dark area 
+                const innerMesh = new THREE.Mesh(innerGeo, innerMat);
+                mesh.add(innerMesh);
+                
+                mesh.position.x = startX + col * totalSize;
+                mesh.position.y = startY - row * totalSize;
+                
+                // HTML Label for marking X or Check
+                const cellLabel = document.createElement('div');
+                cellLabel.className = 'grid-cell-label';
+                cellsContainer.appendChild(cellLabel);
+
+                mesh.userData = {
+                    row,
+                    col,
+                    state: 0, 
+                    baseMaterial: emptyMat.clone(),
+                    labelDiv: cellLabel
+                };
+                
+                cells.push(mesh);
+                gridGroup.add(mesh);
+            }
+        }
+        
+        scene.add(gridGroup);
+        
+        // Generate UI Labels using Flexbox corresponding to Grid size
+        const suspectsContainer = document.getElementById('suspects-labels');
+        const weaponsContainer = document.getElementById('weapons-labels');
+        
+        suspects.forEach((name) => {
+            const container = document.createElement('div');
+            container.className = 'suspect-label-container';
+            const text = document.createElement('div');
+            text.className = 'suspect-label-text';
+            text.textContent = name;
+            container.appendChild(text);
+            suspectsContainer.appendChild(container);
+        });
+
+        weapons.forEach((name) => {
+            const container = document.createElement('div');
+            container.className = 'weapon-label-container';
+            const text = document.createElement('div');
+            text.className = 'weapon-label-text';
+            text.textContent = name;
+            container.appendChild(text);
+            weaponsContainer.appendChild(container);
+        });
+
+        // Raycaster
+        const raycaster = new THREE.Raycaster();
+        const cursor = new THREE.Vector2();
+
+        window.addEventListener('click', onMouseClick);
+        window.addEventListener('resize', onWindowResize);
+
+        function onMouseClick(event) {
+            event.preventDefault();
+            
+            cursor.x = (event.clientX / window.innerWidth) * 2 - 1;
+            cursor.y = -(event.clientY / window.innerHeight) * 2 + 1;
+            
+            raycaster.setFromCamera(cursor, camera);
+            
+            // Only intersect main meshes
+            const intersects = raycaster.intersectObjects(cells);
+            
+            if (intersects.length > 0) {
+                const mesh = intersects[0].object;
+                handleCellClick(mesh);
+            }
+        }
+
+        function handleCellClick(mesh) {
+            if (!gameActive) return;
+            const data = mesh.userData;
+            
+            let nextState = (data.state === 2) ? 0 : 2;
+            
+            if (nextState === 2) {
+                const hasContradiction = checkContradiction(data.row, data.col);
+                if (hasContradiction) {
+                    flashContradiction(data.row, data.col);
+                    return; 
+                }
+            }
+            
+            setCellState(mesh, nextState);
+            
+            if (isInIframe) {
+                const stateTxt = nextState === 2 ? 'CONFIRMED' : 'CLEAR';
+                const color = nextState === 2 ? '#00ff00' : '#70d1f4';
+                window.parent.postMessage({ 
+                    type: 'LOG_MESSAGE', 
+                    data: { prefix: 'SECURITY', message: `SECTOR_[${data.row},${data.col}]: ${stateTxt}`, color: color } 
+                }, '*');
+            }
+
+            recalculateAutoFills();
+            
+            checkWinCondition();
+        }
+        
+        function setCellState(mesh, state) {
+            const data = mesh.userData;
+            data.state = state;
+            const label = data.labelDiv;
+
+            if (state === 0) {
+                mesh.material.color.setHex(emptyMat.color.getHex());
+                mesh.material.opacity = emptyMat.opacity;
+                label.textContent = "";
+                label.style.animation = "none";
+            } else if (state === 1) {
+                mesh.material.color.setHex(eliminatedMat.color.getHex());
+                mesh.material.opacity = eliminatedMat.opacity;
+                label.innerHTML = "&#10005;"; // Cross Mark '✕'
+                label.style.color = "rgba(40, 0, 0, 0.8)";
+                label.style.textShadow = "none";
+                label.style.animation = "none";
+            } else if (state === 2) {
+                mesh.material.color.setHex(confirmedMat.color.getHex());
+                mesh.material.opacity = confirmedMat.opacity;
+                label.innerHTML = "&#10003;"; // Check Mark '✓'
+                label.style.color = "rgba(200, 255, 200, 1)";
+                label.style.textShadow = "0 0 15px rgba(0, 255, 0, 0.9)";
+                label.style.animation = "pulse 2s infinite";
+            }
+            data.baseMaterial.copy(mesh.material);
+        }
+
+        function checkContradiction(row, col) {
+            for (let cell of cells) {
+                if (cell.userData.state === 2) {
+                    if (cell.userData.row === row && cell.userData.col !== col) return true;
+                    if (cell.userData.col === col && cell.userData.row !== row) return true;
+                }
+            }
+            return false;
+        }
+
+        function flashContradiction(row, col) {
+            const flashingCells = cells.filter(c => c.userData.row === row || c.userData.col === col);
+            
+            flashingCells.forEach(cell => {
+                cell.material.color.setHex(flashMat.color.getHex());
+                cell.material.opacity = flashMat.opacity;
+            });
+            
+            setTimeout(() => {
+                flashingCells.forEach(cell => {
+                    cell.material.copy(cell.userData.baseMaterial);
+                });
+            }, 150);
+        }
+
+        function checkWinCondition() {
+            let correctCount = 0;
+            let wrongSelections = 0;
+
+            for (let cell of cells) {
+                if (cell.userData.state === 2) {
+                    const isCorrect = solution.some(p => p.row === cell.userData.row && p.col === cell.userData.col);
+                    if (isCorrect) {
+                        correctCount++;
+                    } else {
+                        wrongSelections++;
+                    }
+                }
+            }
+
+            if (correctCount === 5 && wrongSelections === 0) {
+                document.getElementById('win-overlay').style.display = 'flex';
+                gameActive = false;
+                clearInterval(timerInterval);
+            } else {
+                document.getElementById('win-overlay').style.display = 'none';
+            }
+        }
+
+        function recalculateAutoFills() {
+            for (let cell of cells) {
+                if (cell.userData.state === 1) {
+                    setCellState(cell, 0);
+                }
+            }
+            for (let cell of cells) {
+                if (cell.userData.state === 2) {
+                    autoFill(cell.userData.row, cell.userData.col);
+                }
+            }
+        }
+
+        function autoFill(row, col) {
+            cells.forEach(cell => {
+                if ((cell.userData.row === row || cell.userData.col === col) && cell.userData.state === 0) {
+                    if (!(cell.userData.row === row && cell.userData.col === col)) {
+                        setCellState(cell, 1);
+                    }
+                }
+            });
+        }
+
+        function updateCamera() {
+            camera.left = window.innerWidth / -2;
+            camera.right = window.innerWidth / 2;
+            camera.top = window.innerHeight / 2;
+            camera.bottom = window.innerHeight / -2;
+            camera.updateProjectionMatrix();
+        }
+
+        function onWindowResize() {
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            updateCamera();
+        }
+
+        // Animation Loop
+        function animate() {
+            requestAnimationFrame(animate);
+            renderer.render(scene, camera);
+        }
+        
+        animate();
+
+        function startTimer() {
+            const timeDisplay = document.getElementById('time-display');
+            timerInterval = setInterval(() => {
+                if (!gameActive) return;
+                
+                timeLeft--;
+                let minutes = Math.floor(timeLeft / 60);
+                let seconds = timeLeft % 60;
+                timeDisplay.textContent = `0${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+
+                if (timeLeft <= 0) {
+                    gameActive = false;
+                    clearInterval(timerInterval);
+                    document.getElementById('lose-overlay').style.display = 'flex';
+                }
+            }, 1000);
+        }
+
+        startTimer();
+
+    </script>
+</body>
+</html>

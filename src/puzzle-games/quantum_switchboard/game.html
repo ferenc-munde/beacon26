@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quantum Switchboard</title>
+    <style>
+        body { margin: 0; background: #050505; overflow: hidden; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        
+        /* Persistent UI shell detection to avoid flicker */
+        .in-shell #ui h1, 
+        .in-shell #ui p:not(#status) { display: none !important; }
+        
+        .in-shell #ui {
+            top: auto !important;
+            bottom: 20px !important;
+            left: 20px !important;
+        }
+
+        body.in-shell #message-overlay {
+            transform: translate(-50%, -50%) scale(0.7);
+        }
+        
+        #ui {
+            position: absolute; top: 20px; left: 20px; color: #00f2ff;
+            pointer-events: none; text-shadow: 0 0 10px #00f2ff;
+        }
+        #message-overlay {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            color: #fff; font-size: 2.5rem; font-weight: bold; text-align: center;
+            pointer-events: none; text-shadow: 0 0 20px rgba(0, 242, 255, 0.5);
+            opacity: 0; transition: opacity 0.5s, transform 0.5s;
+            z-index: 100; font-family: 'Orbitron', sans-serif;
+            background: rgba(5, 5, 5, 0.9);
+            padding: 30px 60px;
+            border: 2px solid #00f2ff;
+            border-radius: 5px;
+            box-shadow: 0 0 50px rgba(0, 0, 0, 0.8), inset 0 0 20px rgba(0, 242, 255, 0.2);
+            backdrop-filter: blur(10px);
+            white-space: nowrap;
+        }
+        canvas { display: block; }
+    </style>
+    <script>
+        // Immediate detection to prevent flicker
+        if (window.self !== window.top) {
+            document.documentElement.classList.add('in-shell');
+        }
+    </script>
+</head>
+<body>
+
+<div id="ui">
+    <p id="status" style="margin: 0;">STATUS: SYNCHRONIZED</p>
+    <button id="btn-hint" style="
+        margin-top: 10px; padding: 8px 15px; background: rgba(0, 242, 255, 0.2); 
+        border: 1px solid #ffaa00; color: #ffaa00; cursor: pointer; 
+        pointer-events: auto; font-family: 'Orbitron', sans-serif;
+    ">REQUEST HINT</button>
+</div>
+
+<div id="message-overlay">
+    <div id="overlay-text">MISSION ACCOMPLISHED</div>
+    <button id="btn-exit" style="
+        display: none; margin-top: 25px; padding: 12px 30px; 
+        background: rgba(0, 242, 255, 0.1); border: 2px solid #00f2ff; 
+        color: #00f2ff; cursor: pointer; pointer-events: auto; 
+        font-family: 'Orbitron', sans-serif; font-size: 1rem; 
+        transition: background 0.3s;
+    ">TERMINATE SESSION</button>
+</div>
+
+<script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+    }
+</script>
+
+<script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    // --- Shell Integration ---
+    const isInIframe = window.self !== window.top;
+    if (isInIframe) {
+        window.parent.postMessage({ type: 'SET_STATUS', data: { text: 'QUANTUM_SYNC_ACTIVE' } }, '*');
+    }
+
+    // --- Configuration ---
+    const GRID_SIZE = 5;
+    const SPACING = 1.2;
+    const COLOR_ON = 0x00f2ff;  // Quantum Cyan
+    const COLOR_OFF = 0x112233; // Deep Void
+    const EMISSIVE_INTENSITY = 1.5;
+
+    // --- Scene Setup ---
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    document.body.appendChild(renderer.domElement);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    camera.position.set(0, 0, 8);
+    controls.enableDamping = true;
+    controls.enableZoom = false; // Disable zoom
+    controls.enablePan = false;  // Disable panning
+
+    // --- Lighting ---
+    const ambientLight = new THREE.AmbientLight(0x404040, 2);
+    scene.add(ambientLight);
+    const pointLight = new THREE.PointLight(0xffffff, 10);
+    pointLight.position.set(5, 5, 5);
+    scene.add(pointLight);
+
+    // --- Background (Starfield) ---
+    const starGeometry = new THREE.BufferGeometry();
+    const starCount = 3000;
+    const starPositions = new Float32Array(starCount * 3);
+    const starSpeeds = new Float32Array(starCount);
+
+    for (let i = 0; i < starCount * 3; i += 3) {
+        starPositions[i] = (Math.random() - 0.5) * 100;
+        starPositions[i + 1] = (Math.random() - 0.5) * 100;
+        starPositions[i + 2] = (Math.random() - 0.5) * 100;
+        starSpeeds[i / 3] = 0.01 + Math.random() * 0.03;
+    }
+
+    starGeometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+    const starMaterial = new THREE.PointsMaterial({ 
+        color: 0xffffff, 
+        size: 0.1, 
+        transparent: true, 
+        opacity: 0.8,
+        blending: THREE.AdditiveBlending
+    });
+    const stars = new THREE.Points(starGeometry, starMaterial);
+    scene.add(stars);
+
+    // --- Floor Grid ---
+    const gridHelper = new THREE.GridHelper(100, 40, 0x00f2ff, 0x112233);
+    gridHelper.position.y = -5;
+    gridHelper.material.transparent = true;
+    gridHelper.material.opacity = 0.2;
+    scene.add(gridHelper);
+
+    // --- Scanning Plane ---
+    const scannerGeo = new THREE.PlaneGeometry(20, 0.1);
+    const scannerMat = new THREE.MeshBasicMaterial({ 
+        color: COLOR_ON, 
+        transparent: true, 
+        opacity: 0.5, 
+        side: THREE.DoubleSide 
+    });
+    const scanner = new THREE.Mesh(scannerGeo, scannerMat);
+    scanner.rotation.x = Math.PI / 2;
+    scene.add(scanner);
+
+    // --- Brighter Puzzle Backing ---
+    const boardSize = GRID_SIZE * SPACING + 0.5; // Slightly larger for padding
+    const backingGeo = new THREE.PlaneGeometry(boardSize, boardSize);
+    const backingMat = new THREE.MeshStandardMaterial({
+        color: COLOR_ON,
+        emissive: COLOR_ON,
+        emissiveIntensity: 0.2,
+        transparent: true,
+        opacity: 0.15, // Light glow fill
+        side: THREE.DoubleSide
+    });
+    const backing = new THREE.Mesh(backingGeo, backingMat);
+    backing.position.z = -0.3;
+    scene.add(backing);
+
+    // --- Bright Frame ---
+    const frameEdges = new THREE.EdgesGeometry(backingGeo);
+    const frameMat = new THREE.LineBasicMaterial({ 
+        color: COLOR_ON, 
+        transparent: true, 
+        opacity: 0.8 // High visibility
+    });
+    const frame = new THREE.LineSegments(frameEdges, frameMat);
+    frame.position.copy(backing.position);
+    scene.add(frame);
+
+    // --- Grid Logic ---
+    const grid = []; // Holds the mesh objects
+    const states = []; // true = on, false = off
+    let isSolved = false;
+
+    const geometry = new THREE.BoxGeometry(1, 1, 0.4);
+    
+    const createGrid = () => {
+        const offset = (GRID_SIZE - 1) * SPACING / 2;
+
+        for (let y = 0; y < GRID_SIZE; y++) {
+            for (let x = 0; x < GRID_SIZE; x++) {
+                const material = new THREE.MeshStandardMaterial({
+                    color: COLOR_OFF,
+                    emissive: COLOR_OFF,
+                    emissiveIntensity: 0
+                });
+
+                const cube = new THREE.Mesh(geometry, material);
+                cube.position.set(x * SPACING - offset, (GRID_SIZE - 1 - y) * SPACING - offset, 0);
+                
+                // Metadata for identification
+                cube.userData = { x, y, id: y * GRID_SIZE + x };
+                
+                scene.add(cube);
+                grid.push(cube);
+                states.push(false);
+            }
+        }
+    };
+
+    const updateVisuals = (index) => {
+        const mesh = grid[index];
+        const isOn = states[index];
+        
+        // If hovered, keep white highlight, otherwise set normal color
+        if (hoveredNode === mesh) {
+            mesh.material.color.set(isOn ? COLOR_ON : COLOR_OFF);
+            mesh.material.emissive.set(0xffffff);
+            mesh.material.emissiveIntensity = 2.5;
+        } else {
+            mesh.material.color.set(isOn ? COLOR_ON : COLOR_OFF);
+            mesh.material.emissive.set(isOn ? COLOR_ON : COLOR_OFF);
+            mesh.material.emissiveIntensity = isOn ? EMISSIVE_INTENSITY : 0;
+        }
+        
+        // Subtle scale animation jump
+        mesh.scale.set(1.1, 1.1, 1.1);
+        setTimeout(() => mesh.scale.set(1, 1, 1), 100);
+    };
+
+    const toggleCell = (x, y) => {
+        if (x < 0 || x >= GRID_SIZE || y < 0 || y >= GRID_SIZE) return;
+        const index = y * GRID_SIZE + x;
+        states[index] = !states[index];
+        updateVisuals(index);
+    };
+
+    const handleInteraction = (x, y) => {
+        // Lights Out Logic: Toggle self + neighbors
+        toggleCell(x, y);         // Center
+        toggleCell(x + 1, y);     // Right
+        toggleCell(x - 1, y);     // Left
+        toggleCell(x, y + 1);     // Up
+        toggleCell(x, y - 1);     // Down
+
+        if (isInIframe) {
+            window.parent.postMessage({ 
+                type: 'LOG_MESSAGE', 
+                data: { prefix: 'QUANTUM', message: `NODE_INTERACTION [${x},${y}]`, color: '#00f2ff' } 
+            }, '*');
+        }
+
+        checkWinCondition();
+    };
+
+    const checkWinCondition = () => {
+        const allOn = states.every(s => s === true);
+
+        if (allOn && !isSolved) {
+            isSolved = true;
+            window.displayStatus("SYSTEM CLEARED - KEY: NEBULA", "#00ff88", true);
+
+            // Signal external listeners
+            window.parent.postMessage({ type: 'PUZZLE_SOLVED', puzzle: 'quantum-switchboard' }, '*');
+            window.dispatchEvent(new CustomEvent('puzzleSolved', { detail: { puzzle: 'quantum-switchboard' } }));
+            
+            // Send to server if room exists
+            if (window.activeRoom) {
+                window.sendPuzzleResult(window.activeRoom, true);
+            }
+        } else if (!allOn) {
+            isSolved = false;
+        }
+    };
+
+    /**
+     * Displays a large message in the center of the screen.
+     */
+    window.displayStatus = (message, color = "#00f2ff", persistent = false) => {
+        const statusEl = document.getElementById('status');
+        const overlay = document.getElementById('message-overlay');
+        const overlayText = document.getElementById('overlay-text');
+        const exitBtn = document.getElementById('btn-exit');
+        
+        statusEl.innerText = `STATUS: ${message}`;
+        statusEl.style.color = color;
+
+        overlayText.innerText = message;
+        overlay.style.color = color;
+        overlay.style.borderColor = color;
+        overlay.style.textShadow = `0 0 20px ${color}88`;
+        overlay.style.boxShadow = `0 0 50px rgba(0, 0, 0, 0.8), inset 0 0 20px ${color}33`;
+        overlay.style.opacity = '1';
+        overlay.style.transform = 'translate(-50%, -50%) scale(1.1)';
+        
+        if (persistent) {
+            exitBtn.style.display = 'inline-block';
+            exitBtn.style.borderColor = color;
+            exitBtn.style.color = color;
+        } else {
+            exitBtn.style.display = 'none';
+            setTimeout(() => {
+                if (!isSolved) { // Don't hide if we solved it in the meantime
+                    overlay.style.opacity = '0';
+                    overlay.style.transform = 'translate(-50%, -50%) scale(1)';
+                }
+            }, 3000);
+        }
+    };
+
+    // --- Multiplayer Interface Functions ---
+    /**
+     * Sends the puzzle result (success/failure) to the server.
+     */
+    window.sendPuzzleResult = (room, success) => {
+        if (room) {
+            room.send("puzzleResult", { success });
+        }
+    };
+    /**
+     * Sends the current interaction to the Colyseus room.
+     */
+    window.sendMove = (room, x, y) => {
+        if (room) {
+            room.send("toggle", { x, y });
+        }
+    };
+
+    /**
+     * Updates the local board state based on data from the server.
+     */
+    window.updateGameState = (serverStates) => {
+        if (!serverStates) return;
+        serverStates.forEach((val, index) => {
+            states[index] = val;
+            updateVisuals(index);
+        });
+        checkWinCondition();
+    };
+
+    /**
+     * Requests the current state from the room (if not using automatic sync).
+     */
+    window.requestGameState = (room) => {
+        if (room) {
+            room.send("requestState");
+        }
+    };
+
+    /**
+     * Example helper to hook up a Colyseus room to this puzzle.
+     * Call this once you have joined a room.
+     */
+    window.setupPuzzleMultiplayer = (room) => {
+        window.activeRoom = room;
+
+        // Option 1: Automatic state synchronization (Colyseus Schema)
+        if (room.state && room.state.states) {
+            // Listen for changes on the 'states' collection
+            room.state.states.onChange((value, index) => {
+                states[index] = value;
+                updateVisuals(index);
+                checkWinCondition();
+            });
+
+            // Initial sync
+            room.state.states.forEach((value, index) => {
+                states[index] = value;
+                updateVisuals(index);
+            });
+        }
+
+        // Option 2: Manual message-based synchronization
+        room.onMessage("gameState", (serverStates) => {
+            window.updateGameState(serverStates);
+        });
+
+        // Listen for puzzle results from others/server
+        room.onMessage("puzzleResult", (data) => {
+            if (data.success) {
+                window.displayStatus("SYSTEM RESTORED", "#00ff88", true);
+                isSolved = true;
+            } else {
+                window.displayStatus("SYSTEM BREACH", "#ff4444");
+            }
+        });
+
+        // Request initial state manually
+        window.requestGameState(room);
+    };
+
+    /**
+     * Finds the next move in the solution and highlights it.
+     */
+    window.showHint = () => {
+        const solution = solveLightsOut(states, true); // true = target ALL ON
+        if (solution && solution.length > 0) {
+            const nextMoveIdx = solution[0];
+            const mesh = grid[nextMoveIdx];
+            
+            // Pulse highlight
+            const originalEmissive = mesh.material.emissive.getHex();
+            mesh.material.emissive.set(0xffaa00);
+            mesh.material.emissiveIntensity = 5;
+            
+            setTimeout(() => {
+                updateVisuals(nextMoveIdx);
+                // Repeat pulse
+                setTimeout(() => {
+                    mesh.material.emissive.set(0xffaa00);
+                    mesh.material.emissiveIntensity = 5;
+                    setTimeout(() => {
+                        updateVisuals(nextMoveIdx);
+                    }, 500);
+                }, 500);
+            }, 500);
+        } else {
+            window.displayStatus("SYSTEM ALREADY OPTIMIZED", "#00ff88");
+        }
+    };
+
+    /**
+     * Logic to solve Lights Out (for hint system).
+     * Uses Gaussian elimination on the adjacency matrix.
+     */
+    function solveLightsOut(currentStates, targetOn = true) {
+        const n = GRID_SIZE * GRID_SIZE;
+        const matrix = [];
+        
+        // Build adjacency matrix for 5x5 grid
+        for (let i = 0; i < n; i++) {
+            matrix[i] = new Uint8Array(n + 1);
+            const x = i % GRID_SIZE;
+            const y = Math.floor(i / GRID_SIZE);
+            
+            // Adjacency: self + neighbors
+            matrix[i][i] = 1;
+            if (x > 0) matrix[i][i - 1] = 1;
+            if (x < GRID_SIZE - 1) matrix[i][i + 1] = 1;
+            if (y > 0) matrix[i][i - GRID_SIZE] = 1;
+            if (y < GRID_SIZE - 1) matrix[i][i + GRID_SIZE] = 1;
+            
+            // Target vector: (TargetState XOR CurrentState)
+            // We want CurrentState XOR (Moves) = TargetState
+            // So Moves = AdjacencyInverse * (TargetState XOR CurrentState)
+            const target = targetOn ? 1 : 0;
+            matrix[i][n] = (target ^ (currentStates[i] ? 1 : 0));
+        }
+
+        // Gaussian Elimination (Modulo 2)
+        let pivot = 0;
+        for (let j = 0; j < n && pivot < n; j++) {
+            let sel = pivot;
+            for (let i = pivot + 1; i < n; i++) {
+                if (matrix[i][j] > matrix[sel][j]) sel = i;
+            }
+            if (!matrix[sel][j]) continue;
+
+            // Swap rows
+            let temp = matrix[sel];
+            matrix[sel] = matrix[pivot];
+            matrix[pivot] = temp;
+
+            for (let i = 0; i < n; i++) {
+                if (i !== pivot && matrix[i][j]) {
+                    for (let k = j; k <= n; k++) {
+                        matrix[i][k] ^= matrix[pivot][k];
+                    }
+                }
+            }
+            pivot++;
+        }
+
+        const solutionSteps = [];
+        for (let i = 0; i < n; i++) {
+            if (matrix[i][n] && matrix[i][i]) {
+                solutionSteps.push(i);
+            }
+        }
+        return solutionSteps;
+    }
+
+    // --- Interaction Logic ---
+    const raycaster = new THREE.Raycaster();
+    const mouse = new THREE.Vector2();
+    let hoveredNode = null;
+
+    const onMouseMove = (event) => {
+        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+        raycaster.setFromCamera(mouse, camera);
+        const intersects = raycaster.intersectObjects(grid);
+
+        if (intersects.length > 0) {
+            const node = intersects[0].object;
+            if (hoveredNode !== node) {
+                if (hoveredNode) {
+                    const id = hoveredNode.userData.id;
+                    hoveredNode.material.emissive.set(states[id] ? COLOR_ON : COLOR_OFF);
+                    hoveredNode.material.emissiveIntensity = states[id] ? EMISSIVE_INTENSITY : 0;
+                }
+                hoveredNode = node;
+                hoveredNode.material.emissive.set(0xffffff); // White Highlight
+                hoveredNode.material.emissiveIntensity = 2.5;
+                document.body.style.cursor = 'pointer';
+            }
+        } else if (hoveredNode) {
+            const id = hoveredNode.userData.id;
+            hoveredNode.material.emissive.set(states[id] ? COLOR_ON : COLOR_OFF);
+            hoveredNode.material.emissiveIntensity = states[id] ? EMISSIVE_INTENSITY : 0;
+            hoveredNode = null;
+            document.body.style.cursor = 'default';
+        }
+    };
+
+    const onMouseClick = (event) => {
+        mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+        mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+        raycaster.setFromCamera(mouse, camera);
+        const intersects = raycaster.intersectObjects(grid);
+
+        if (intersects.length > 0) {
+            const { x, y } = intersects[0].object.userData;
+            
+            // If we are in a multiplayer session, we send the move.
+            // Otherwise, we handle it locally.
+            if (window.activeRoom) {
+                window.sendMove(window.activeRoom, x, y);
+            } else {
+                handleInteraction(x, y);
+            }
+        }
+    };
+
+    // --- Initialization ---
+    createGrid();
+
+    // Randomize initial state (Quantum Scramble)
+    // 15 moves for a more challenging and random start
+    for(let i = 0; i < 15; i++) {
+        const rx = Math.floor(Math.random() * GRID_SIZE);
+        const ry = Math.floor(Math.random() * GRID_SIZE);
+        handleInteraction(rx, ry);
+    }
+
+    window.addEventListener('keydown', (e) => {
+        if (e.shiftKey && e.key.toLowerCase() === 'w') {
+            window.solvePuzzle();
+        }
+        if (e.key.toLowerCase() === 'h') {
+            window.showHint();
+        }
+    });
+
+    document.getElementById('btn-hint').addEventListener('click', () => {
+        window.showHint();
+    });
+
+    document.getElementById('btn-exit').addEventListener('click', () => {
+        console.log("Exiting game...");
+        window.parent.postMessage({ type: 'EXIT_GAME' }, '*');
+        // Fallback for standalone:
+        window.close();
+        document.body.innerHTML = "<div style='color: #00f2ff; text-align: center; margin-top: 20%; font-family: Orbitron;'>SESSION TERMINATED</div>";
+    });
+
+    window.addEventListener('click', onMouseClick);
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('resize', () => {
+        camera.aspect = window.innerWidth / window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+
+    const animate = () => {
+        requestAnimationFrame(animate);
+        
+        // Subtle background rotation
+        stars.rotation.y += 0.0005;
+        stars.rotation.x += 0.0002;
+
+        // Scanning effect
+        scanner.position.z = Math.sin(Date.now() * 0.001) * 5;
+        scanner.material.opacity = 0.2 + Math.cos(Date.now() * 0.001) * 0.1;
+
+        controls.update();
+        renderer.render(scene, camera);
+    };
+
+    animate();
+</script>
+</body>
+</html>
