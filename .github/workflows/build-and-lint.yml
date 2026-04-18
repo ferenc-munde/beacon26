@@ -68,4 +68,15 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build AI Docker image
-        run: docker build -f ai/Dockerfile -t beacon26-ai:ci .
+        run: docker build -f ai/Dockerfile -t beacon26-ai:ci ai
+
+      - name: Scan AI Docker image with Trivy
+        uses: aquasecurity/trivy-action@v0.35.0
+        with:
+          image-ref: beacon26-ai:ci
+          scanners: vuln
+          format: table
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'HIGH,CRITICAL'
