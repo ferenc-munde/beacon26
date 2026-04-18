@@ -177,14 +177,17 @@ function initGame(container) {
             if (data.isTarget) {
                 const winStatus = checkWinConditions();
                 if (winStatus === "WIN") {
-                    isGameWon = true; // This will trigger the faster blink in animate()
+                    isGameWon = true;
                     document.getElementById('game-status').innerHTML = 
                         `SYSTEM_CLEARED // ACCESS_KEY: <span style="color:#fff; text-shadow: 0 0 10px #fff;">PLUTO</span>`;
                     
-                    // star.scale.set(5, 5, 1); <-- REMOVED this line to keep size same
                     const winLight = new THREE.PointLight(0x00ff00, 10, 50);
                     winLight.position.copy(star.position);
                     scene.add(winLight);
+
+                    // Notify parent lobby
+                    window.parent.postMessage({ type: 'PUZZLE_SOLVED', puzzle: 'star_map' }, '*');
+                    window.dispatchEvent(new CustomEvent('puzzleSolved', { detail: { puzzle: 'star_map' } }));
                 } 
                 else if (winStatus === "PARTIAL") {
                     isGameWon = true; 

@@ -279,6 +279,28 @@
             pointer-events: none;
         }
 
+        #quit-game-btn {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 200;
+            padding: 10px 22px;
+            border: 1px solid #ef4444;
+            border-radius: 6px;
+            background: rgba(239, 68, 68, 0.12);
+            color: #ef4444;
+            cursor: pointer;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.8rem;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            transition: background 0.2s ease, box-shadow 0.2s ease;
+        }
+        #quit-game-btn:hover {
+            background: rgba(239, 68, 68, 0.28);
+            box-shadow: 0 0 14px rgba(239, 68, 68, 0.4);
+        }
+
         #lose-overlay {
             position: absolute;
             top: 50%;
@@ -349,8 +371,10 @@
 
     <div id="win-overlay">
         <h1>ACCESS GRANTED</h1>
-        <div class="secret-keyword">Secret keyword: Add keyword here</div>
+        <div class="secret-keyword">Secret keyword: CIPHER</div>
     </div>
+
+    <button id="quit-game-btn" onclick="quitGame()">✕ QUIT GAME</button>
 
     <div id="clues-panel">
         <h2>Intercepted Comms</h2>
@@ -605,6 +629,8 @@
                 document.getElementById('win-overlay').style.display = 'flex';
                 gameActive = false;
                 clearInterval(timerInterval);
+                // Notify parent lobby that this puzzle is solved
+                window.parent.postMessage({ type: 'PUZZLE_SOLVED', puzzle: 'cosmic_clues' }, '*');
             } else {
                 document.getElementById('win-overlay').style.display = 'none';
             }
@@ -673,6 +699,10 @@
         }
 
         startTimer();
+
+        function quitGame() {
+            window.parent.postMessage({ type: 'EXIT_GAME' }, '*');
+        }
 
     </script>
 </body>

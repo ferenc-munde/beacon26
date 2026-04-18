@@ -25,7 +25,15 @@ export class BeaconTile extends Schema {
 }
 
 export class BeaconPuzzleState extends Schema {
+  /** "waiting" | "playing" | "finished" */
   @type("string") status: string = "waiting";
+
+  /** ID of the puzzle currently open for all players ("" = none) */
+  @type("string") activePuzzle: string = "";
+
+  /** Comma-separated list of solved puzzle IDs */
+  @type("string") solvedPuzzles: string = "";
+
   @type({ map: Player }) players = new MapSchema<Player>();
   @type([ BeaconTile ]) tiles = new ArraySchema<BeaconTile>();
 }

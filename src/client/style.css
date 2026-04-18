@@ -31,6 +31,7 @@ body {
   height: 100vh;
 }
 
+/* ── HUD ────────────────────────────────────────────────────────────────────── */
 .hud {
   position: absolute;
   top: 24px;
@@ -65,21 +66,28 @@ h1 {
   border-radius: 999px;
   background: rgba(2, 6, 23, 0.45);
   backdrop-filter: blur(12px);
+  font-size: 0.8rem;
+  white-space: nowrap;
 }
 
 .hint {
   position: absolute;
-  left: 24px;
+  left: 50%;
   bottom: 24px;
+  transform: translateX(-50%);
   max-width: 28rem;
   padding: 12px 14px;
   border-radius: 16px;
-  background: rgba(2, 6, 23, 0.45);
+  background: rgba(2, 6, 23, 0.55);
   border: 1px solid rgba(148, 163, 184, 0.18);
   backdrop-filter: blur(12px);
   z-index: 2;
+  text-align: center;
+  font-size: 0.85rem;
+  color: #94a3b8;
 }
 
+/* ── Remote cursor labels ──────────────────────────────────────────────────── */
 .cursor-label {
   position: absolute;
   left: 0;
@@ -95,13 +103,210 @@ h1 {
   white-space: nowrap;
 }
 
+/* ── Activity Log ────────────────────────────────────────────────────────────── */
+#activity-log {
+  position: absolute;
+  bottom: 80px;
+  left: 24px;
+  width: 280px;
+  z-index: 3;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.activity-entry {
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  backdrop-filter: blur(8px);
+  background: rgba(2, 6, 23, 0.6);
+  border-left: 3px solid #64748b;
+  color: #cbd5e1;
+  transition: opacity 1.5s ease;
+}
+
+.activity-entry.activity-join  { border-left-color: #4ade80; color: #4ade80; }
+.activity-entry.activity-leave { border-left-color: #f87171; color: #f87171; }
+.activity-entry.activity-solve { border-left-color: #facc15; color: #facc15; font-weight: bold; }
+.activity-entry.faded          { opacity: 0; }
+
+/* ── Puzzle Overlay ─────────────────────────────────────────────────────────── */
+.puzzle-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  background: rgba(4, 10, 20, 0.97);
+  transition: opacity 0.3s ease;
+}
+
+.puzzle-overlay.hidden {
+  display: none;
+}
+
+.puzzle-overlay-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 20px;
+  background: rgba(0, 10, 24, 0.9);
+  border-bottom: 1px solid rgba(125, 211, 252, 0.2);
+  height: 50px;
+  flex-shrink: 0;
+  backdrop-filter: blur(12px);
+}
+
+.puzzle-overlay-header span {
+  font-size: 1rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #7dd3fc;
+  font-weight: 600;
+}
+
+.puzzle-iframe {
+  flex: 1;
+  width: 100%;
+  border: none;
+  background: #000;
+}
+
+/* ── Quit Button ────────────────────────────────────────────────────────────── */
+.quit-btn {
+  padding: 8px 20px;
+  border: 1px solid #ef4444;
+  border-radius: 6px;
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  transition: background 0.2s ease, box-shadow 0.2s ease;
+}
+
+.quit-btn:hover {
+  background: rgba(239, 68, 68, 0.25);
+  box-shadow: 0 0 14px rgba(239, 68, 68, 0.4);
+}
+
+/* ── Solve Toast ────────────────────────────────────────────────────────────── */
+.solve-toast {
+  position: absolute;
+  bottom: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 14px 28px;
+  border-radius: 12px;
+  background: rgba(0, 255, 136, 0.15);
+  border: 1px solid rgba(0, 255, 136, 0.4);
+  color: #00ff88;
+  font-weight: bold;
+  font-size: 1.1rem;
+  letter-spacing: 0.08em;
+  backdrop-filter: blur(14px);
+  box-shadow: 0 0 30px rgba(0, 255, 136, 0.2);
+  z-index: 55;
+  text-align: center;
+  animation: toastPulse 1s ease infinite alternate;
+}
+
+.solve-toast.hidden {
+  display: none;
+}
+
+@keyframes toastPulse {
+  from { box-shadow: 0 0 20px rgba(0, 255, 136, 0.2); }
+  to   { box-shadow: 0 0 40px rgba(0, 255, 136, 0.5); }
+}
+
+/* ── Responsive ─────────────────────────────────────────────────────────────── */
 @media (max-width: 720px) {
   .hud {
     flex-direction: column;
   }
+  #activity-log {
+    width: 200px;
+  }
+}
+/* -- Session Info ------------------------------------------------------------- */
+.session-panel {
+  position: fixed;
+  bottom: 24px;
+  left: 24px;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(12px);
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-family: 'Inter', sans-serif;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
 
-  .hint {
-    right: 24px;
-    max-width: none;
+.session-panel:hover {
+  border-color: var(--secondary);
+  background: rgba(15, 23, 42, 0.8);
+  box-shadow: 0 0 20px rgba(56, 189, 248, 0.2);
+}
+
+.session-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: #94a3b8;
+}
+
+.session-id {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: var(--secondary);
+  text-transform: uppercase;
+}
+
+.copy-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.copy-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.copy-icon {
+  width: 16px;
+  height: 16px;
+  fill: #94a3b8;
+  transition: fill 0.2s;
+}
+
+.copy-btn:hover .copy-icon {
+  fill: var(--secondary);
+}
+
+.copy-btn.success .copy-icon {
+  fill: var(--primary);
+}
+
+@media (max-width: 720px) {
+  .session-panel {
+    bottom: auto;
+    top: 80px;
+    left: 20px;
   }
 }
