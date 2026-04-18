@@ -95,6 +95,7 @@ Both services have their own Dockerfile and health checks.
 Recommended environment variables:
 
 - In game service:
-  - `AI_BASE_URL` set to AI service internal URL on Railway
+  - `AI_BASE_URL` set to `http://beacon26-ai.railway.internal:8080` on Railway
+  - `AI_BASE_URL` set to `http://beacon26-ai:8000` for local Docker Compose
 - In AI service:
   - `PORT` (Railway sets this automatically)

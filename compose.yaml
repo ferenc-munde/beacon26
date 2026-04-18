@@ -5,6 +5,7 @@ services:
       - "3000:3000"
     environment:
       - PORT=3000
+      - AI_BASE_URL=http://beacon26-ai:8000
 
   beacon26-ai:
     build:
