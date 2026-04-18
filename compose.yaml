@@ -5,3 +5,14 @@ services:
       - "3000:3000"
     environment:
       - PORT=3000
+      - AI_BASE_URL=http://beacon26-ai:8000
+
+  beacon26-ai:
+    build:
+      context: .
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
+    env_file:
+      - ./ai/.env
