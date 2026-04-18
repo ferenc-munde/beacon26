@@ -17,7 +17,9 @@ ENV PORT=3000
 RUN apk add --no-cache git
 
 COPY package.json ./
-RUN npm install --omit=dev
+RUN npm install --omit=dev \
+	&& rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx \
+	&& apk del git
 
 COPY --from=build /app/dist ./dist
 
