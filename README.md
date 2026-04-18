@@ -53,3 +53,48 @@ This repository includes a [railway.toml](railway.toml) file, so Railway can bui
 5. After deployment, open the Railway-generated domain.
 
 The app listens on the Railway-provided `PORT` and exposes a `/health` endpoint for health checks.
+## AI Service (FastAPI) Scaffolding
+
+A separate AI service is scaffolded under [ai](ai) using FastAPI.
+
+- Health endpoint: `GET /health`
+- Inference endpoint: `POST /v1/infer`
+
+Example request:
+
+```bash
+curl -X POST http://localhost:8000/v1/infer \
+  -H "Content-Type: application/json" \
+  -d '{"prompt":"need a hint","mode":"play"}'
+```
+
+## Run Both Services with Docker Compose
+
+```bash
+docker compose up --build
+```
+
+Services:
+
+- Game service: `http://localhost:3000`
+- AI service: `http://localhost:8000`
+
+## Railway Monorepo Setup (2 Deployments)
+
+Create two Railway services from the same GitHub repository:
+
+1. `beacon26-game`
+   - Root directory: repository root (`.`)
+   - Uses [railway.toml](railway.toml)
+2. `beacon26-ai`
+   - Root directory: `ai`
+   - Uses [ai/railway.toml](ai/railway.toml)
+
+Both services have their own Dockerfile and health checks.
+
+Recommended environment variables:
+
+- In game service:
+  - `AI_BASE_URL` set to AI service internal URL on Railway
+- In AI service:
+  - `PORT` (Railway sets this automatically)
