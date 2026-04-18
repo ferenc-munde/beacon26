@@ -1,5 +1,5 @@
 import './style.css';
-import { Client, Room } from 'colyseus.js';
+import { Client, Room, getStateCallbacks } from 'colyseus.js';
 import {
   AmbientLight,
   Color,
@@ -70,6 +70,23 @@ app.innerHTML = `
   </div>
   <div class="hint">Move your mouse or touch the screen. Click on colored nodes to enter puzzles.</div>
   <div id="activity-log"></div>
+
+  <!-- Intro video overlay (shown before each puzzle starts) -->
+  <div id="intro-overlay" class="intro-overlay hidden">
+    <div class="intro-content">
+      <div class="intro-badge">MISSION BRIEFING</div>
+      <div id="intro-puzzle-name" class="intro-puzzle-name"></div>
+      <div class="intro-video-wrap">
+        <video id="intro-video" class="intro-video" playsinline>
+          <source src="/video/intro%20video.mp4" type="video/mp4">
+        </video>
+        <div class="intro-progress-bar"><div id="intro-progress-fill" class="intro-progress-fill"></div></div>
+      </div>
+      <div class="intro-actions">
+        <button id="intro-skip-btn" class="intro-skip-btn">SKIP INTRO ↵</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Full-screen puzzle overlay (hidden by default) -->
   <div id="puzzle-overlay" class="puzzle-overlay hidden">
@@ -151,8 +168,57 @@ PUZZLES.forEach(p => {
 const raycaster = new Raycaster();
 const mouse2d = new Vector2();
 
+// ─── Intro overlay ───────────────────────────────────────────────────────────
+
+const introOverlay  = document.querySelector<HTMLDivElement>('#intro-overlay')!;
+const introVideo    = document.querySelector<HTMLVideoElement>('#intro-video')!;
+const introSkipBtn  = document.querySelector<HTMLButtonElement>('#intro-skip-btn')!;
+const introPuzzleName = document.querySelector<HTMLDivElement>('#intro-puzzle-name')!;
+const introProgressFill = document.querySelector<HTMLDivElement>('#intro-progress-fill')!;
+
+let pendingPuzzleId: string | null = null;
+let introAnimFrame: number | null = null;
+
+function showIntroOverlay(puzzleId: string): void {
+  const p = PUZZLES.find(x => x.id === puzzleId);
+  if (!p) return;
+
+  pendingPuzzleId = puzzleId;
+  introPuzzleName.textContent = p.label;
+  introOverlay.classList.remove('hidden');
+  introProgressFill.style.width = '0%';
+
+  introVideo.currentTime = 0;
+  introVideo.play().catch(() => { /* autoplay blocked — still show overlay */ });
+
+  function tickProgress() {
+    if (!introVideo.duration) { introAnimFrame = requestAnimationFrame(tickProgress); return; }
+    const pct = (introVideo.currentTime / introVideo.duration) * 100;
+    introProgressFill.style.width = `${pct}%`;
+    introAnimFrame = requestAnimationFrame(tickProgress);
+  }
+  introAnimFrame = requestAnimationFrame(tickProgress);
+}
+
+function dismissIntroAndLaunch(): void {
+  if (introAnimFrame !== null) { cancelAnimationFrame(introAnimFrame); introAnimFrame = null; }
+  introVideo.pause();
+  introOverlay.classList.add('hidden');
+
+  if (pendingPuzzleId && room?.connection?.isOpen) {
+    room.send('open_puzzle', { puzzle: pendingPuzzleId });
+  }
+  pendingPuzzleId = null;
+}
+
+introVideo.addEventListener('ended', dismissIntroAndLaunch);
+introSkipBtn.addEventListener('click', dismissIntroAndLaunch);
+
+// ─── Puzzle click ─────────────────────────────────────────────────────────────
+
 function onPointerClick(event: PointerEvent) {
   if (!isPuzzleOverlayHidden()) return;
+  if (introOverlay && !introOverlay.classList.contains('hidden')) return;
   if (!room || !room.connection?.isOpen) return;
 
   mouse2d.x = (event.clientX / window.innerWidth) * 2 - 1;
@@ -162,7 +228,7 @@ function onPointerClick(event: PointerEvent) {
   const hits = raycaster.intersectObjects(hexMeshes.map(h => h.mesh));
   if (hits.length > 0) {
     const puzzleId = hits[0].object.userData.puzzleId as string;
-    room.send('open_puzzle', { puzzle: puzzleId });
+    showIntroOverlay(puzzleId);
   }
 }
 
@@ -193,12 +259,14 @@ function ensureRemoteCursor(sessionId: string, player: any): void {
   };
   remotes.set(sessionId, remote);
 
-  player.onChange(() => {
-    remote.color = player.color;
-    remote.target.set(player.x, 0.2, player.z);
-    remote.material.color.set(player.color);
-    remote.material.emissive.set(player.color);
-  });
+  if ($room) {
+    $room(player).onChange(() => {
+      remote.color = player.color;
+      remote.target.set(player.x, 0.2, player.z);
+      remote.material.color.set(player.color);
+      remote.material.emissive.set(player.color);
+    });
+  }
 }
 
 const activityLog = document.querySelector<HTMLDivElement>('#activity-log')!;
@@ -275,6 +343,7 @@ window.addEventListener('message', (event: MessageEvent) => {
 
 const client = new Client(getWsEndpoint());
 let room: Room | null = null;
+let $room: ReturnType<typeof getStateCallbacks> | null = null;
 let localX = 0;
 let localY = 0;
 let lastSentAt = 0;
@@ -291,15 +360,26 @@ async function joinRoom(): Promise<void> {
     
     if (requestedRoomId) {
       console.log(`[Lobby] Attempting to join session: ${requestedRoomId}`);
-      room = await client.joinById(requestedRoomId, { name });
+      try {
+        room = await client.joinById(requestedRoomId, { name });
+      } catch (joinErr) {
+        // Invalid or expired room — fall back to creating a fresh session
+        console.warn(`[Lobby] Session "${requestedRoomId}" not found or expired. Creating new session.`);
+        const cleanUrl = new URL(window.location.href);
+        cleanUrl.searchParams.delete('room');
+        window.history.replaceState({}, '', cleanUrl.toString());
+        if (status) status.textContent = 'Session not found — starting new room…';
+        room = await client.create('beacon_puzzle', { name });
+      }
     } else {
       console.log(`[Lobby] Creating new session...`);
       room = await client.create('beacon_puzzle', { name });
     }
 
     // Capture the join/create ID for display and URL sync
-    // In current colyseus.js, the public room ID is room.id
-    const actualRoomId = room.id;
+    // In Colyseus 0.16+, the public room ID is room.roomId
+    $room = getStateCallbacks(room);
+    const actualRoomId = room.roomId;
     console.log(`[Lobby] Successfully joined/created session: ${actualRoomId}`);
 
     // Update URL with the actual room ID for easy sharing
@@ -326,31 +406,35 @@ async function joinRoom(): Promise<void> {
       }
     });
 
-    room.onStateChange.once(() => {
-      room!.state.players.onAdd((player: any, sessionId: string) => {
-        ensureRemoteCursor(sessionId, player);
-        if (sessionId !== room!.sessionId) {
-          logActivity(`[+] ${player.name} joined`, 'join');
-        }
-      });
-      room!.state.players.onRemove((_player: any, sessionId: string) => {
-        const remote = remotes.get(sessionId);
-        if (remote) {
-          logActivity(`[-] ${remote.label.textContent} disconnected`, 'leave');
-          scene.remove(remote.mesh);
-          remote.mesh.geometry.dispose();
-          (remote.mesh.material as MeshStandardMaterial).dispose();
-          remote.label.remove();
-          remotes.delete(sessionId);
-        }
-      });
-      for (const [id, p] of room!.state.players.entries()) {
-        ensureRemoteCursor(id, p);
+    // In Colyseus 0.16+, use the getStateCallbacks proxy for schema listeners.
+    // onAdd fires immediately for pre-existing players AND for future joins.
+    let initialSyncDone = false;
+    $room!(room.state).players.onAdd((player: any, sessionId: string) => {
+      ensureRemoteCursor(sessionId, player);
+      // Only log join messages for players who arrive AFTER the initial state sync
+      if (sessionId !== room!.sessionId && initialSyncDone) {
+        logActivity(`[+] ${player.name} joined`, 'join');
       }
+    });
+    $room!(room.state).players.onRemove((_player: any, sessionId: string) => {
+      const remote = remotes.get(sessionId);
+      if (remote) {
+        logActivity(`[-] ${remote.label.textContent} disconnected`, 'leave');
+        scene.remove(remote.mesh);
+        remote.mesh.geometry.dispose();
+        (remote.mesh.material as MeshStandardMaterial).dispose();
+        remote.label.remove();
+        remotes.delete(sessionId);
+      }
+    });
+    // Mark initial sync done after the first state is received
+    room.onStateChange(() => {
+      if (!initialSyncDone) initialSyncDone = true;
     });
 
     room.onLeave(() => {
       room = null;
+      $room = null;
       if (status) status.textContent = 'Disconnected. Reconnecting…';
       for (const remote of remotes.values()) {
         scene.remove(remote.mesh);
@@ -440,14 +524,17 @@ function updateSessionUI(roomId: string) {
   
   if (copyBtn) {
     copyBtn.onclick = () => {
-      const inviteUrl = window.location.href;
-      navigator.clipboard.writeText(inviteUrl).then(() => {
+      if (!roomId) return;
+      navigator.clipboard.writeText(roomId).then(() => {
         copyBtn.classList.add('success');
+        const labelEl = copyBtn.querySelector<HTMLSpanElement>('.copy-label');
+        if (labelEl) labelEl.textContent = 'COPIED!';
         const originalTitle = copyBtn.getAttribute('title');
         copyBtn.setAttribute('title', 'Copied!');
         setTimeout(() => {
           copyBtn.classList.remove('success');
-          copyBtn.setAttribute('title', originalTitle || 'Copy Invite Link');
+          if (labelEl) labelEl.textContent = 'COPY';
+          copyBtn.setAttribute('title', originalTitle || 'Copy invite link');
         }, 2000);
       });
     };
