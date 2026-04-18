@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sci-Fi Hidden Object Game</title>
+    <!-- Use Google Fonts for sci-fi aesthetic -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <!-- Include Three.js via CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+
+    <!-- Standard Image Background -->
+    <img src="assets/background.png" id="bg-image" alt="Background">
+
+
+    <!-- Game Over / Victory Overlay -->
+    <div id="endOverlay" class="overlay hidden">
+        <div class="loader-content glass">
+            <h1 id="endTitle">GAME OVER</h1>
+            <p id="endScore">Final Score: 0</p>
+            <p id="secretKeyword" style="display: none; margin-top: 10px; color: #ff00aa; font-family: 'Orbitron', sans-serif;">secret keyword: placeholder</p>
+            <button id="restartBtn" class="cyber-btn">REBOOT SYSTEM</button>
+        </div>
+    </div>
+
+    <!-- UI Overlay for HUD -->
+    <div id="uiContainer">
+        <!-- Top HUD -->
+        <div id="topHud" class="hud-panel glass">
+            <div class="hud-item">
+                <span class="label">TIME REMAINING</span>
+                <span id="timerDisplay" class="value">05:00</span>
+            </div>
+            <div class="hud-item">
+                <span class="label">TOTAL SCORE</span>
+                <span id="scoreDisplay" class="value">0</span>
+            </div>
+        </div>
+
+        <!-- Right Sidebar -->
+        <div id="rightSidebar" class="hud-panel glass sidebar">
+            <h2>TARGET ACQUISITION</h2>
+            <ul id="itemsList">
+                <!-- Populated by JS -->
+            </ul>
+        </div>
+
+        <!-- Bottom HUD -->
+        <div id="bottomHud">
+            <button id="hintBtn" class="cyber-btn hint-btn">
+                REQUEST HINT (<span id="hintCount">3</span>)
+            </button>
+        </div>
+    </div>
+
+    <!-- Script Imports -->
+    <script src="objects_config.js"></script>
+    <script src="main.js"></script>
+</body>
+</html>
