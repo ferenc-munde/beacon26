@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Puzzle System Shell</title>
+    <link rel="stylesheet" href="shell.css">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="scanline"></div>
+    <div class="outer-frame">
+        <div class="status-header">
+            <div class="header-left">
+                <span class="label">NEURAL_LINK:</span> <span class="highlight">CONNECTED</span>
+                <span class="label">SECTOR:</span> <span class="highlight" id="shell-sector">ALPHA-9</span>
+            </div>
+            <div class="header-right">
+                <span id="shell-status">INITIALIZING_MODULE...</span>
+            </div>
+        </div>
+        
+        <div class="content-wrapper">
+            <div class="left-panel">
+                <div id="game-viewport" class="panel-border">
+                    <div class="panel-header" id="shell-title">// SYSTEM_VISUALIZER</div>
+                    <div class="corner-tl"></div><div class="corner-tr"></div>
+                    <iframe id="game-frame" src="" frameborder="0" style="width: 100%; height: 100%; flex: 1;"></iframe>
+                </div>
+                
+                <div id="log-viewport" class="panel-border">
+                    <div class="panel-header">// DECRYPTED_COMMS_LOG</div>
+                    <div class="corner-tl"></div><div class="corner-tr"></div>
+                    <div class="scroll-content">
+                        <ul id="shell-log-list"></ul>
+                    </div>
+                </div>
+            </div>
+
+            <div id="player-viewport" class="panel-border">
+                <div class="panel-header">// ACTIVE_OPERATIVES</div>
+                <div class="corner-tl"></div><div class="corner-tr"></div>
+                <div class="scroll-content">
+                    <div id="shell-player-list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <audio id="bg-audio" loop>
+        <source src="../../../public/audio/beacon_background_music.mp3" type="audio/mpeg">
+        Your browser does not support the audio element.
+    </audio>
+
+    <script src="shell-manager.js"></script>
+    <script>
+        // Use URL parameters to decide which game to load
+        const urlParams = new URLSearchParams(window.location.search);
+        // Default to star_map for testing
+        const gameUrl = urlParams.get('game') || '../quantum_switchboard/game.html';
+        const title = urlParams.get('title') || 'STAR_MAP';
+        
+        if (gameUrl) {
+            document.getElementById('game-frame').src = gameUrl;
+            document.getElementById('shell-title').textContent = `// ${title.toUpperCase()}_VISUALIZER`;
+            document.getElementById('shell-status').textContent = 'SYSTEM_READY';
+        } else {
+            document.getElementById('shell-status').textContent = 'ERROR: NO_MODULE_SPECIFIED';
+        }
+
+        // Background music setup
+        const bgAudio = document.getElementById('bg-audio');
+        if (bgAudio) {
+            bgAudio.volume = 0.3; // Set a reasonable default volume
+            const playAudio = () => {
+                bgAudio.play().catch(e => console.log('Autoplay blocked. User interaction required:', e));
+            };
+            
+            // Try autoplay
+            playAudio();
+            
+            // Fallback for browsers that require interaction before playing audio
+            document.addEventListener('click', () => {
+                if (bgAudio.paused) {
+                    bgAudio.play();
+                }
+            }, { once: true });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BEACON26 — Deep Space Escape</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:         #0F172A;
+    --surface:    #1E293B;
+    --primary:    #22C55E;
+    --secondary:  #38BDF8;
+    --ink:        #E2E8F0;
+    --ink-dim:    #94A3B8;
+    --ink-faint:  #475569;
+    --line:       rgba(226,232,240,0.07);
+    --line-s:     rgba(226,232,240,0.14);
+    --sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+    --r: 10px;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg); color: var(--ink); font-family: var(--sans); -webkit-font-smoothing: antialiased; }
+  body { overflow-x: hidden; }
+  a { color: inherit; text-decoration: none; }
+  button, input { font: inherit; }
+  ::selection { background: var(--primary); color: #000; }
+
+  /* SCENE */
+  .scene { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+  .scene canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .nebula {
+    position: absolute; inset: -10%; filter: blur(70px); opacity: 0.45;
+    background:
+      radial-gradient(circle at 15% 25%, color-mix(in oklab,var(--primary) 30%,transparent) 0%,transparent 35%),
+      radial-gradient(circle at 80% 75%, color-mix(in oklab,var(--secondary) 25%,transparent) 0%,transparent 40%),
+      radial-gradient(circle at 55% 50%, rgba(56,189,248,0.12) 0%,transparent 45%);
+    mix-blend-mode: screen;
+    animation: drift 45s ease-in-out infinite alternate;
+  }
+  @keyframes drift { 0%{transform:translate(0,0) scale(1)} 50%{transform:translate(-2%,1.5%) scale(1.06)} 100%{transform:translate(2%,-1%) scale(1.02)} }
+  .grain { position:fixed;inset:0;z-index:2;pointer-events:none;opacity:.035;mix-blend-mode:overlay;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.8'/></svg>"); }
+  .scanlines { position:fixed;inset:0;z-index:3;pointer-events:none;opacity:.05;background:repeating-linear-gradient(to bottom,transparent 0 2px,rgba(255,255,255,.5) 2px 3px);mix-blend-mode:overlay; }
+
+  /* CHROME */
+  .chrome { position:fixed;left:0;right:0;top:0;z-index:40;pointer-events:none; }
+  .chrome > * { pointer-events:auto; }
+  .chrome-inner { padding:18px 32px;display:flex;justify-content:space-between;align-items:center; border-bottom:1px solid var(--line); background:rgba(15,23,42,0.7);backdrop-filter:blur(16px); }
+  .brand { display:flex;align-items:center;gap:10px;font-size:14px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase; }
+  .brand .dot { width:7px;height:7px;border-radius:50%;background:var(--primary);box-shadow:0 0 10px var(--primary);animation:blink 1.6s ease-in-out infinite; }
+  @keyframes blink { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.8)} }
+  .chrome-nav { display:flex;gap:24px;font-size:12px;letter-spacing:.06em;color:var(--ink-dim); }
+  .chrome-nav a { transition:color .2s; } .chrome-nav a:hover { color:var(--primary); }
+  .chrome-meta { font-size:11px;letter-spacing:.1em;color:var(--ink-faint); display:flex;gap:16px; }
+  .chrome-meta b { color:var(--ink-dim); }
+
+  /* CORNERS */
+  .corner { position:fixed;z-index:5;pointer-events:none;width:24px;height:24px;border-color:var(--line-s);border-style:solid;border-width:0; }
+  .corner.tl{top:60px;left:14px;border-top-width:1px;border-left-width:1px}
+  .corner.tr{top:60px;right:14px;border-top-width:1px;border-right-width:1px}
+  .corner.bl{bottom:14px;left:14px;border-bottom-width:1px;border-left-width:1px}
+  .corner.br{bottom:14px;right:14px;border-bottom-width:1px;border-right-width:1px}
+
+  /* LAYOUT */
+  main { position:relative;z-index:10; }
+  section { padding:100px 48px;max-width:1320px;margin:0 auto; }
+
+  /* EYEBROW */
+  .eyebrow { font-size:11px;font-weight:500;letter-spacing:.26em;text-transform:uppercase;color:var(--primary);display:inline-flex;align-items:center;gap:10px; }
+  .eyebrow::before { content:"";width:22px;height:1px;background:currentColor; }
+
+  /* HERO */
+  .hero { min-height:100vh;padding-top:120px;padding-bottom:60px;display:grid;grid-template-rows:1fr auto;gap:48px; }
+  .hero-inner { display:grid;grid-template-columns:1.3fr 1fr;gap:80px;align-items:center; }
+
+  .hero h1 { font-size:clamp(48px,8vw,120px);line-height:.92;letter-spacing:-.04em;font-weight:600; }
+  .hero h1 .line { display:block;overflow:hidden; }
+  .hero h1 .line > span { display:block;transform:translateY(110%);animation:rise 1s cubic-bezier(.2,.8,.2,1) forwards; }
+  .hero h1 .line:nth-child(2) > span { animation-delay:.08s }
+  .hero h1 .line:nth-child(3) > span { animation-delay:.16s }
+  @keyframes rise { to{transform:translateY(0)} }
+  .hero h1 .accent { color:var(--primary); }
+  .hero h1 .blue { color:var(--secondary); }
+
+  .hero-sub { margin-top:20px;max-width:460px;font-size:16px;line-height:1.55;color:var(--ink-dim);font-weight:400;opacity:0;animation:fade .9s ease .5s forwards; }
+  @keyframes fade { to{opacity:1} }
+
+  /* CTA */
+  .cta-block { margin-top:32px;opacity:0;animation:fade .9s ease .7s forwards; }
+  .cta-row { display:flex;gap:12px;flex-wrap:wrap;align-items:center; }
+  .btn { display:inline-flex;align-items:center;gap:10px;padding:14px 22px;font-size:13px;font-weight:600;letter-spacing:.04em;border-radius:var(--r);border:1.5px solid transparent;cursor:pointer;transition:all .22s; }
+  .btn-primary { background:var(--primary);color:#000;border-color:var(--primary); }
+  .btn-primary:hover { background:#16a34a;border-color:#16a34a;box-shadow:0 0 32px color-mix(in oklab,var(--primary) 50%,transparent); }
+  .btn-primary:active { background:#15803d; }
+  .btn-ghost { background:transparent;color:var(--ink-dim);border-color:var(--line-s); }
+  .btn-ghost:hover { border-color:var(--ink-dim);color:var(--ink); }
+
+  /* JOIN WITH CODE */
+  .join-row { display:flex;gap:0;margin-top:16px;border:1.5px solid var(--line-s);border-radius:var(--r);overflow:hidden;background:var(--surface);max-width:360px;transition:border-color .2s; }
+  .join-row:focus-within { border-color:var(--secondary); }
+  .join-input { flex:1;padding:13px 16px;background:transparent;color:var(--ink);font-size:13px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;border:none;outline:none; }
+  .join-input::placeholder { color:var(--ink-faint);text-transform:uppercase;letter-spacing:.08em; }
+  .btn-join { padding:13px 18px;background:var(--secondary);color:#000;font-size:12px;font-weight:700;letter-spacing:.06em;cursor:pointer;border:none;transition:background .2s;white-space:nowrap;flex-shrink:0; }
+  .btn-join:hover { background:#0ea5e9; }
+  .join-label { font-size:11px;color:var(--ink-faint);letter-spacing:.08em;margin-top:8px;padding-left:2px; }
+
+  /* BEACON STAGE */
+  .beacon-stage { position:relative;aspect-ratio:1;max-width:480px;margin-left:auto; }
+  .beacon-stage svg { width:100%;height:100%;overflow:visible; }
+  .ring { fill:none;stroke:var(--line-s);stroke-width:.6; }
+  .ring.active { stroke:var(--primary);stroke-width:1; }
+  .ring.dashed { stroke-dasharray:2 5; }
+  .ring.blue { stroke:var(--secondary);stroke-width:.8;opacity:.5; }
+  .core { fill:var(--primary);filter:drop-shadow(0 0 18px var(--primary)); }
+  .lbl { font-family:var(--sans);font-size:9px;fill:var(--ink-dim);letter-spacing:.15em;text-transform:uppercase; }
+  .val { font-family:var(--sans);font-size:10px;font-weight:500;fill:var(--ink); }
+  .spin { transform-origin:50% 50%;animation:spin 42s linear infinite; }
+  .spin-r { transform-origin:50% 50%;animation:spin 65s linear infinite reverse; }
+  @keyframes spin { to{transform:rotate(360deg)} }
+  .pulse-ring { transform-origin:50% 50%;animation:pring 3.2s ease-out infinite; }
+  @keyframes pring { 0%{transform:scale(.5);opacity:.9} 100%{transform:scale(1.5);opacity:0} }
+  .bob { animation:bob 6s ease-in-out infinite; }
+  @keyframes bob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+
+  /* HERO META */
+  .hero-meta { display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line);padding-top:24px;opacity:0;animation:fade 1s ease 1s forwards;gap:0; }
+  .cell { padding:4px 20px 4px 0;border-left:1px solid var(--line);padding-left:16px; }
+  .cell:first-child { border-left:0;padding-left:0; }
+  .k { font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-faint); }
+  .v { font-size:18px;margin-top:5px;font-weight:500; }
+  .v.green { color:var(--primary); }
+
+  /* SECTION HEAD */
+  .sec-head { margin-bottom:56px; }
+  .sec-head h2 { font-size:clamp(32px,4.5vw,56px);line-height:1.05;letter-spacing:-.025em;font-weight:600;margin-top:12px; }
+  .sec-head h2 .g { color:var(--primary); }
+  .sec-head h2 .b { color:var(--secondary); }
+  .sec-head p { color:var(--ink-dim);font-size:15px;line-height:1.55;max-width:480px;margin-top:14px; }
+
+  /* STEPS */
+  .steps { display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line); border:1px solid var(--line); border-radius:var(--r);overflow:hidden; }
+  .step { background:var(--surface);padding:36px 32px 44px;display:flex;flex-direction:column;justify-content:space-between;min-height:280px;transition:background .25s; }
+  .step:hover { background:color-mix(in oklab,var(--surface) 85%,var(--primary) 8%); }
+  .step .num { font-size:10px;font-weight:600;letter-spacing:.22em;color:var(--primary); }
+  .step h3 { font-size:26px;line-height:1.1;letter-spacing:-.01em;font-weight:600;margin-top:8px; }
+  .step p { color:var(--ink-dim);font-size:13px;line-height:1.55;margin-top:12px; }
+  .step-icon { margin-top:24px;height:56px; }
+  .step-icon svg { width:100%;height:100%; }
+
+  /* PUZZLES */
+  .puzzles { display:grid;grid-template-columns:repeat(3,1fr);gap:16px; }
+  .puzzle { position:relative;aspect-ratio:4/5;border:1px solid var(--line-s);border-radius:var(--r);overflow:hidden;cursor:pointer;background:var(--surface);transition:transform .4s cubic-bezier(.2,.8,.2,1),border-color .25s; }
+  .puzzle:hover { border-color:var(--primary);transform:translateY(-4px); }
+  .puzzle .art { position:absolute;inset:0;overflow:hidden; }
+  .puzzle .art svg { width:100%;height:100%;transition:transform .7s cubic-bezier(.2,.8,.2,1); }
+  .puzzle:hover .art svg { transform:scale(1.04); }
+  .puzzle .art::after { content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 25%,rgba(15,23,42,.96) 100%); }
+  .puzzle .info { position:absolute;left:0;right:0;bottom:0;padding:20px;z-index:2; }
+  .puzzle .tag { font-size:10px;font-weight:600;letter-spacing:.2em;text-transform:uppercase;color:var(--primary);display:flex;justify-content:space-between; }
+  .puzzle h4 { font-size:22px;line-height:1.05;letter-spacing:-.01em;font-weight:600;margin-top:8px; }
+  .puzzle .deps { position:absolute;top:14px;left:14px;right:14px;z-index:2;display:flex;justify-content:space-between;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-dim); }
+  .puzzle .status { color:var(--primary);display:flex;gap:5px;align-items:center; }
+  .puzzle .status::before { content:"";width:5px;height:5px;border-radius:50%;background:currentColor;box-shadow:0 0 6px currentColor; }
+
+  /* TICKER */
+  .ticker-wrap { padding:0;max-width:none;overflow:hidden;border-top:1px solid var(--line);border-bottom:1px solid var(--line);mask-image:linear-gradient(90deg,transparent,#000 8%,#000 92%,transparent); }
+  .ticker-track { display:flex;gap:48px;animation:slide 28s linear infinite;white-space:nowrap;padding:20px 0; }
+  @keyframes slide { to{transform:translateX(-50%)} }
+  .t-item { font-size:12px;font-weight:500;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-dim);display:inline-flex;align-items:center;gap:12px; }
+  .t-item .d { width:4px;height:4px;background:var(--primary);border-radius:50%; }
+  .t-item b { color:var(--ink);font-weight:600; }
+
+  /* FOOTER */
+  footer { position:relative;z-index:10;border-top:1px solid var(--line);padding:60px 48px 40px;max-width:1320px;margin:0 auto; }
+  .foot-grid { display:grid;grid-template-columns:1.6fr 1fr 1fr;gap:60px; }
+  .foot-brand .brand { font-size:16px;margin-bottom:14px; }
+  .foot-brand p { color:var(--ink-dim);font-size:13px;line-height:1.55;max-width:300px; }
+  .foot-col .ft { font-size:10px;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:16px; }
+  .foot-col a { display:block;padding:5px 0;color:var(--ink-dim);font-size:13px;transition:color .2s; }
+  .foot-col a:hover { color:var(--primary); }
+  .foot-bottom { display:flex;justify-content:space-between;align-items:center;margin-top:48px;padding-top:24px;border-top:1px solid var(--line);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-faint); }
+  .foot-status { color:var(--primary);display:flex;gap:7px;align-items:center; }
+  .foot-status::before { content:"";width:6px;height:6px;border-radius:50%;background:currentColor;box-shadow:0 0 7px currentColor;animation:blink 1.5s infinite; }
+
+  /* DOOR */
+  .door-overlay { position:fixed;inset:0;z-index:100;background:var(--bg);display:flex;align-items:center;justify-content:center;transition:opacity .6s ease .8s; }
+  .door-overlay.open { opacity:0;pointer-events:none; }
+  .door { position:relative;width:min(88vw,460px);aspect-ratio:3/4;display:grid;grid-template-columns:1fr 1fr;gap:2px;overflow:hidden; }
+  .door::before { content:"";position:absolute;inset:-2px;border:1px solid var(--primary);box-shadow:0 0 50px color-mix(in oklab,var(--primary) 35%,transparent);pointer-events:none; }
+  .door-half { background:var(--surface);position:relative;transition:transform 1.2s cubic-bezier(.7,0,.2,1);overflow:hidden; }
+  .door-half::before { content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent 0 19px,rgba(226,232,240,0.05) 19px 20px),linear-gradient(180deg,color-mix(in oklab,var(--primary) 5%,transparent),transparent 40%); }
+  .door-half.left { border-right:1px solid var(--primary); }
+  .door-overlay.open .door-half.left { transform:translateX(-110%); }
+  .door-overlay.open .door-half.right { transform:translateX(110%); }
+  .door-center { position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center;z-index:2;transition:opacity .4s;width:220px; }
+  .door-overlay.open .door-center { opacity:0; }
+  .door-center .code { font-size:10px;font-weight:600;letter-spacing:.3em;color:var(--ink-dim); }
+  .door-center h2 { font-size:28px;letter-spacing:-.02em;font-weight:700;margin-top:8px; }
+  .door-center h2 span { color:var(--primary); }
+  .door-btn { margin-top:22px;padding:13px 20px;background:transparent;border:1.5px solid var(--primary);color:var(--primary);font-size:12px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;cursor:pointer;border-radius:var(--r);transition:all .22s;width:100%; }
+  .door-btn:hover { background:var(--primary);color:#000;box-shadow:0 0 30px color-mix(in oklab,var(--primary) 45%,transparent); }
+  .door-c { position:absolute;width:18px;height:18px;border-color:var(--primary);border-style:solid;border-width:0;z-index:3; }
+  .door-c.tl{top:8px;left:8px;border-top-width:1px;border-left-width:1px}
+  .door-c.tr{top:8px;right:8px;border-top-width:1px;border-right-width:1px}
+  .door-c.bl{bottom:8px;left:8px;border-bottom-width:1px;border-left-width:1px}
+  .door-c.br{bottom:8px;right:8px;border-bottom-width:1px;border-right-width:1px}
+
+  /* REVEAL */
+  .reveal { opacity:0;transform:translateY(24px);transition:opacity .7s ease,transform .7s cubic-bezier(.2,.8,.2,1); }
+  .reveal.in { opacity:1;transform:none; }
+
+  @media(max-width:900px){
+    section{padding:72px 20px}
+    .chrome-inner{padding:14px 20px}
+    .chrome-nav,.chrome-meta{display:none}
+    .hero-inner{grid-template-columns:1fr;gap:40px}
+    .beacon-stage{max-width:280px;margin:0 auto}
+    .hero-meta{grid-template-columns:repeat(2,1fr);gap:16px}
+    .cell{border-left:0;padding-left:0}
+    .steps,.puzzles{grid-template-columns:1fr}
+    .foot-grid{grid-template-columns:1fr 1fr;gap:32px}
+    .foot-bottom{flex-direction:column;gap:12px;align-items:flex-start}
+    .corner{display:none}
+  }
+</style>
+</head>
+<body>
+
+<div class="scene">
+  <div class="nebula"></div>
+  <canvas id="stars"></canvas>
+</div>
+<div class="grain"></div>
+<div class="scanlines"></div>
+
+<!-- DOOR -->
+<div class="door-overlay" id="door">
+  <div class="door">
+    <div class="door-c tl"></div><div class="door-c tr"></div>
+    <div class="door-c bl"></div><div class="door-c br"></div>
+    <div class="door-half left"></div>
+    <div class="door-half right"></div>
+    <div class="door-center">
+      <div class="code" id="door-code">SECTOR 26 — 04:26h</div>
+      <h2>Welcome, <span>crew</span></h2>
+      <button class="door-btn" id="door-btn">↵ Open Airlock</button>
+    </div>
+  </div>
+</div>
+
+<!-- CHROME -->
+<div class="chrome">
+  <div class="chrome-inner">
+    <!-- ONLY the logo lines changed -->
+   <div class="brand">
+      <img src="logo.png" alt="Beacon26 Logo"
+       style="height:70px; transform:scale(1.6); transform-origin:left center;">
+    </div>
+    <nav class="chrome-nav">
+      <a href="#how">How it works</a>
+      <a href="#puzzles">Puzzles</a>
+      <a href="#ship">Ship</a>
+    </nav>
+    <div class="chrome-meta">
+      <span><b id="tel-hr">--:--</b> UTC</span>
+      <span><b id="tel-on">2,148</b> ONLINE</span>
+    </div>
+  </div>
+</div>
+
+<div class="corner tl"></div><div class="corner tr"></div>
+<div class="corner bl"></div><div class="corner br"></div>
+
+<main>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-inner">
+      <div>
+        <div class="eyebrow">Co-op · Deep Space · Browser-based</div>
+        <h1 style="margin-top:20px;">
+          <span class="line"><span>Escape the</span></span>
+          <span class="line"><span class="accent">dark.</span></span>
+          <span class="line"><span>Together.</span></span>
+        </h1>
+        <p class="hero-sub">Six rooms. One derelict ship. Solve puzzles in real-time with your crew — no download needed, just a browser and nerve.</p>
+
+        <div class="cta-block">
+          <div class="cta-row">
+            <button class="btn btn-primary" onclick="document.getElementById('door').classList.add('open')">
+              ▶ &nbsp;Start Now
+            </button>
+            <a class="btn btn-ghost" href="#how">How it works</a>
+          </div>
+
+          <div style="margin-top:20px;">
+            <div class="join-row">
+              <input class="join-input" id="code-input" placeholder="Enter session code" maxlength="8" spellcheck="false">
+              <button class="btn-join" onclick="joinSession()">JOIN →</button>
+            </div>
+            <div class="join-label">Have a code? Drop in mid-session.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="beacon-stage bob">
+        <svg viewBox="0 0 400 400">
+          <g class="spin">
+            <circle class="ring dashed" cx="200" cy="200" r="188"></circle>
+            <circle class="ring" cx="200" cy="200" r="168" opacity=".4"></circle>
+          </g>
+          <g class="spin-r">
+            <circle class="ring active dashed" cx="200" cy="200" r="148"></circle>
+            <circle class="ring blue" cx="200" cy="200" r="128"></circle>
+          </g>
+          <!-- cardinal ticks -->
+          <line x1="200" y1="8" x2="200" y2="20" stroke="var(--primary)" stroke-width="1.5"></line>
+          <line x1="200" y1="380" x2="200" y2="392" stroke="var(--line-s)" stroke-width="1"></line>
+          <line x1="8" y1="200" x2="20" y2="200" stroke="var(--line-s)" stroke-width="1"></line>
+          <line x1="380" y1="200" x2="392" y2="200" stroke="var(--line-s)" stroke-width="1"></line>
+          <text x="200" y="32" text-anchor="middle" class="lbl">N / 000</text>
+          <text x="374" y="204" text-anchor="end" class="lbl">090</text>
+          <text x="200" y="376" text-anchor="middle" class="lbl">180</text>
+          <text x="26" y="204" class="lbl">270</text>
+          <!-- hex -->
+          <g class="spin-r">
+            <polygon points="200,92 292,144 292,256 200,308 108,256 108,144" fill="none" stroke="var(--primary)" stroke-width="1" opacity=".55"></polygon>
+            <polygon points="200,118 264,156 264,244 200,282 136,244 136,156" fill="none" stroke="var(--primary)" stroke-width=".5" opacity=".3"></polygon>
+          </g>
+          <!-- pulse -->
+          <circle class="pulse-ring" cx="200" cy="200" r="52" fill="none" stroke="var(--primary)" stroke-width="1.2" opacity=".6"></circle>
+          <!-- core -->
+          <circle class="core" cx="200" cy="200" r="13"></circle>
+          <circle cx="200" cy="200" r="26" fill="none" stroke="var(--primary)" stroke-width=".6" opacity=".5"></circle>
+          <!-- labels -->
+          <text x="200" y="72" text-anchor="middle" class="val" style="letter-spacing:.18em">B E A C O N</text>
+          <text x="200" y="346" text-anchor="middle" class="lbl">SIG · 26.04 GHz</text>
+          <!-- satellites -->
+          <circle cx="316" cy="108" r="3" fill="var(--primary)"></circle>
+          <text x="324" y="112" class="lbl" style="fill:var(--primary)">ALPHA</text>
+          <circle cx="86" cy="304" r="3" fill="var(--secondary)"></circle>
+          <text x="94" y="308" class="lbl" style="fill:var(--secondary)">ECHO</text>
+          <circle cx="72" cy="92" r="2.5" fill="var(--primary)" opacity=".6"></circle>
+          <g stroke="var(--line-s)" stroke-width=".6" stroke-dasharray="2 3">
+            <line x1="200" y1="200" x2="316" y2="108"></line>
+            <line x1="200" y1="200" x2="86" y2="304"></line>
+            <line x1="200" y1="200" x2="72" y2="92"></line>
+          </g>
+        </svg>
+      </div>
+    </div>
+
+    <div class="hero-meta">
+      <div class="cell"><div class="k">Status</div><div class="v green">Live</div></div>
+      <div class="cell"><div class="k">Crew</div><div class="v">2–6 players</div></div>
+      <div class="cell"><div class="k">Duration</div><div class="v">~45 min</div></div>
+      <div class="cell"><div class="k">Next drop</div><div class="v" id="next-drop" style="font-size:14px;margin-top:7px;">T–00:04:26</div></div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section id="how" style="padding-top:0;">
+    <div class="sec-head reveal">
+      <div class="eyebrow">Mission brief</div>
+      <h2>Three moves to get <span class="g">home.</span></h2>
+    </div>
+    <div class="steps reveal">
+      <div class="step">
+        <div>
+          <div class="num">01</div>
+          <h3>Board up.</h3>
+          <p>Share a link. Up to six crew members spawn in the airlock — cursors named and visible to everyone.</p>
+        </div>
+        <div class="step-icon">
+          <svg viewBox="0 0 200 56" preserveAspectRatio="xMidYMid meet">
+            <rect x="8" y="16" width="184" height="28" fill="none" stroke="var(--line-s)"></rect>
+            <circle cx="38" cy="30" r="5" fill="var(--primary)"></circle>
+            <circle cx="72" cy="30" r="5" fill="var(--secondary)"></circle>
+            <circle cx="108" cy="30" r="5" fill="var(--primary)" opacity=".6"></circle>
+            <circle cx="144" cy="30" r="5" fill="var(--secondary)" opacity=".6"></circle>
+            <line x1="8" y1="30" x2="192" y2="30" stroke="var(--line)" stroke-dasharray="2 2"></line>
+          </svg>
+        </div>
+      </div>
+      <div class="step">
+        <div>
+          <div class="num">02</div>
+          <h3>Look around.</h3>
+          <p>Pan the room with your mouse. Anything that highlights on hover is a clue, a panel, or a door.</p>
+        </div>
+        <div class="step-icon">
+          <svg viewBox="0 0 200 56" preserveAspectRatio="xMidYMid meet">
+            <rect x="18" y="10" width="164" height="36" fill="none" stroke="var(--line-s)"></rect>
+            <rect x="28" y="18" width="26" height="20" fill="none" stroke="var(--primary)"></rect>
+            <rect x="66" y="18" width="26" height="20" fill="none" stroke="var(--line)" stroke-dasharray="2 2"></rect>
+            <rect x="104" y="18" width="26" height="20" fill="color-mix(in oklab,var(--primary) 14%,transparent)" stroke="var(--primary)"></rect>
+            <rect x="142" y="18" width="26" height="20" fill="none" stroke="var(--line)"></rect>
+          </svg>
+        </div>
+      </div>
+      <div class="step">
+        <div>
+          <div class="num">03</div>
+          <h3>Solve together.</h3>
+          <p>A puzzle opens for the whole crew. Drag pieces in real-time, see each other's hands, pass the answer forward.</p>
+        </div>
+        <div class="step-icon">
+          <svg viewBox="0 0 200 56" preserveAspectRatio="xMidYMid meet">
+            <rect x="18" y="12" width="28" height="32" fill="var(--primary)" opacity=".45"></rect>
+            <rect x="50" y="12" width="28" height="32" fill="var(--primary)" opacity=".2" stroke="var(--primary)"></rect>
+            <rect x="82" y="12" width="28" height="32" fill="none" stroke="var(--line)" stroke-dasharray="2 2"></rect>
+            <rect x="114" y="12" width="28" height="32" fill="var(--secondary)" opacity=".5"></rect>
+            <rect x="146" y="12" width="28" height="32" fill="none" stroke="var(--line)"></rect>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PUZZLES -->
+  <!-- <section id="puzzles">
+    <div class="sec-head reveal">
+      <div class="eyebrow">Rooms</div>
+      <h2>Three puzzles. <span class="b">One exit.</span></h2>
+      <p>Each room holds a single challenge. Solve in order — or uncover the path yourself.</p>
+    </div>
+    <div class="puzzles reveal">
+
+      <div class="puzzle">
+        <div class="deps"><span>P1 · LVL 01</span><span class="status">AVAILABLE</span></div>
+        <div class="art">
+          <svg viewBox="0 0 400 500" preserveAspectRatio="xMidYMid slice">
+            <defs><radialGradient id="rg1" cx="50%" cy="40%" r="60%"><stop offset="0%" stop-color="#22C55E" stop-opacity=".25"></stop><stop offset="100%" stop-color="#0F172A" stop-opacity="1"></stop></radialGradient></defs>
+            <rect width="400" height="500" fill="url(#rg1)"></rect>
+            <g fill="#E2E8F0" opacity=".5">
+              <circle cx="60" cy="80" r="1.4"></circle><circle cx="340" cy="60" r="2.2"></circle>
+              <circle cx="280" cy="180" r="1.8"></circle><circle cx="100" cy="200" r="1.5"></circle>
+              <circle cx="220" cy="260" r="2"></circle><circle cx="320" cy="300" r="1.2"></circle>
+              <circle cx="80" cy="340" r="1.5"></circle><circle cx="160" cy="420" r="1.8"></circle>
+            </g>
+            <g fill="var(--primary)"><circle cx="180" cy="120" r="3.5"></circle><circle cx="280" cy="180" r="3.5"></circle><circle cx="160" cy="420" r="3.5"></circle></g>
+            <g stroke="var(--primary)" stroke-width=".7" fill="none" stroke-dasharray="2 3">
+              <line x1="180" y1="120" x2="280" y2="180"></line>
+              <line x1="280" y1="180" x2="160" y2="420"></line>
+              <line x1="160" y1="420" x2="180" y2="120"></line>
+            </g>
+          </svg>
+        </div>
+        <div class="info">
+          <div class="tag"><span>Star Map</span><span>01/03</span></div>
+          <h4>The triangle between stars.</h4>
+        </div>
+      </div>
+
+      <div class="puzzle">
+        <div class="deps"><span>P2 · LVL 02</span><span class="status" style="color:var(--secondary)">LOCKED</span></div>
+        <div class="art">
+          <svg viewBox="0 0 400 500" preserveAspectRatio="xMidYMid slice">
+            <defs><linearGradient id="rg2" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#1a0a2e"></stop><stop offset="100%" stop-color="#0F172A"></stop></linearGradient></defs>
+            <rect width="400" height="500" fill="url(#rg2)"></rect>
+            <rect x="60" y="100" width="280" height="300" fill="none" stroke="var(--line-s)"></rect>
+            <g fill="var(--secondary)" opacity=".7"><rect x="80" y="130" width="28" height="9"></rect><rect x="200" y="130" width="28" height="9"></rect><rect x="280" y="130" width="28" height="9"></rect></g>
+            <g fill="var(--line-s)"><rect x="120" y="130" width="28" height="9"></rect><rect x="160" y="130" width="28" height="9"></rect></g>
+            <g fill="var(--primary)" opacity=".7"><rect x="80" y="170" width="28" height="9"></rect><rect x="160" y="170" width="28" height="9"></rect></g>
+            <circle cx="200" cy="330" r="38" fill="none" stroke="var(--primary)"></circle>
+            <circle cx="200" cy="330" r="3" fill="var(--primary)"></circle>
+            <line x1="200" y1="330" x2="226" y2="304" stroke="var(--primary)" stroke-width="2"></line>
+          </svg>
+        </div>
+        <div class="info">
+          <div class="tag"><span>Switchboard</span><span>02/03</span></div>
+          <h4>Flip the right three.</h4>
+        </div>
+      </div>
+
+      <div class="puzzle">
+        <div class="deps"><span>P3 · LVL 03</span><span class="status" style="color:var(--ink-faint)">HIDDEN</span></div>
+        <div class="art">
+          <svg viewBox="0 0 400 500" preserveAspectRatio="xMidYMid slice">
+            <rect width="400" height="500" fill="#0b1a2e"></rect>
+            <g font-family="var(--sans)" font-size="19" font-weight="500" fill="var(--ink-dim)" letter-spacing=".08em">
+              <text x="40" y="80">X A T W O M</text><text x="40" y="114">B E A C O N</text>
+              <text x="40" y="148">R L O S T E</text><text x="40" y="182">V I S I O N</text>
+              <text x="40" y="216">Q P Y D R K</text><text x="40" y="250">N U E J F H</text>
+              <text x="40" y="284">C O M E T Z</text><text x="40" y="318">G X R A I L</text>
+              <text x="40" y="352">S T A R S W</text><text x="40" y="386">E Y L M O P</text>
+            </g>
+            <rect x="34" y="94" width="208" height="27" fill="var(--primary)" opacity=".18" stroke="var(--primary)" rx="2"></rect>
+            <rect x="34" y="264" width="175" height="27" fill="var(--secondary)" opacity=".15" stroke="var(--secondary)" rx="2"></rect>
+            <text x="40" y="114" font-family="var(--sans)" font-size="19" font-weight="600" fill="var(--primary)" letter-spacing=".08em">B E A C O N</text>
+            <text x="40" y="284" font-family="var(--sans)" font-size="19" font-weight="600" fill="var(--secondary)" letter-spacing=".08em">C O M E T</text>
+          </svg>
+        </div>
+        <div class="info">
+          <div class="tag"><span>Word Search</span><span>03/03</span></div>
+          <h4>Four words. One door.</h4>
+        </div>
+      </div>
+
+    </div>
+  </section> -->
+
+  <!-- TICKER -->
+  <div class="ticker-wrap">
+    <div class="ticker-track" id="ticker"></div>
+  </div>
+
+</main>
+
+<footer>
+  <div class="foot-grid">
+    <div class="foot-brand">
+      <div class="brand">
+  <img src="logo.png" alt="Beacon26 Logo"
+       style="height:90px; transform:scale(1.4); transform-origin:left center;">
+</div>
+      <p>A co-op browser escape room set in deep space. Real-time multiplayer, zero downloads. Bring your crew.</p>
+      <button class="btn btn-primary" style="margin-top:20px;" onclick="document.getElementById('door').classList.add('open')">▶ &nbsp;Start Now</button>
+    </div>
+    <div class="foot-col">
+      <div class="ft">Explore</div>
+      <a href="#how">How it works</a>
+      <a href="#puzzles">Puzzles</a>
+      <a href="#ship">Ship map</a>
+    </div>
+    <div class="foot-col">
+      <div class="ft">Contact</div>
+      <a href="#">Discord</a>
+      <a href="#">GitHub</a>
+      <a href="mailto:crew@beacon26.example">Email</a>
+    </div>
+  </div>
+  <div class="foot-bottom">
+    <span>© 2026 · BEACON-26 · v0.3.1</span>
+    <span class="foot-status">ALL SYSTEMS NOMINAL</span>
+  </div>
+</footer>
+
+<script>
+// ── STARS ──
+(() => {
+  const canvas = document.getElementById('stars');
+  const ctx = canvas.getContext('2d');
+  let stars = [], W = 0, H = 0, mx = 0, my = 0, sx = 0, sy = 0, scrollY = 0;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+  function resize() {
+    W = window.innerWidth; H = window.innerHeight;
+    canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  function make() {
+    const n = Math.floor(W * H / 2800);
+    stars = Array.from({length: n}, () => ({
+      x: Math.random() * W, y: Math.random() * H,
+      z: Math.random() * 3 + .2, r: Math.random() * 1.1 + .2,
+      tw: Math.random() * Math.PI * 2, sp: Math.random() * .02 + .005,
+      g: Math.random() < .07,
+    }));
+  }
+  window.addEventListener('resize', () => { resize(); make(); });
+  window.addEventListener('mousemove', e => { mx = (e.clientX/W-.5); my = (e.clientY/H-.5); });
+  window.addEventListener('scroll', () => { scrollY = window.scrollY; }, {passive:true});
+
+  const shoots = [];
+  function frame() {
+    sx += (mx - sx) * .04; sy += (my - sy) * .04;
+    ctx.clearRect(0, 0, W, H);
+    for (const s of stars) {
+      let x = ((s.x + sx*38*s.z + (scrollY*.02*s.z)) % W + W) % W;
+      let y = ((s.y + sy*38*s.z - (scrollY*.05*s.z)) % H + H) % H;
+      s.tw += s.sp;
+      const a = .3 + Math.sin(s.tw) * .3;
+      ctx.beginPath();
+      ctx.arc(x, y, s.r * (s.z/2+.4), 0, Math.PI*2);
+      if (s.g) {
+        ctx.fillStyle = '#22C55E';
+        ctx.shadowColor = '#22C55E'; ctx.shadowBlur = 6;
+      } else {
+        ctx.fillStyle = `rgba(226,232,240,${a})`;
+        ctx.shadowBlur = 0;
+      }
+      ctx.fill();
+    }
+    ctx.shadowBlur = 0;
+    if (Math.random() < .003) shoots.push({x:Math.random()*W,y:Math.random()*H*.5,vx:6+Math.random()*3,vy:2+Math.random()*1.5,life:1});
+    for (let i = shoots.length - 1; i >= 0; i--) {
+      const st = shoots[i];
+      const g = ctx.createLinearGradient(st.x,st.y,st.x-st.vx*10,st.y-st.vy*10);
+      g.addColorStop(0, `rgba(255,255,255,${st.life})`);
+      g.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.beginPath(); ctx.strokeStyle = g; ctx.lineWidth = 1.2;
+      ctx.moveTo(st.x,st.y); ctx.lineTo(st.x-st.vx*10,st.y-st.vy*10); ctx.stroke();
+      st.x += st.vx; st.y += st.vy; st.life -= .022;
+      if (st.life <= 0) shoots.splice(i, 1);
+    }
+    requestAnimationFrame(frame);
+  }
+  resize(); make(); frame();
+})();
+
+// ── DOOR ──
+(() => {
+  const door = document.getElementById('door');
+  const btn = document.getElementById('door-btn');
+  const code = document.getElementById('door-code');
+  btn.addEventListener('click', () => door.classList.add('open'));
+  setTimeout(() => door.classList.add('open'), 5000);
+  const target = 'SECTOR 26 — 04:26h';
+  const cs = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let t = 0;
+  const iv = setInterval(() => {
+    t++;
+    let out = '';
+    for (let i = 0; i < target.length; i++) {
+      if (t > i || ' —/:'.includes(target[i])) out += target[i];
+      else out += cs[Math.floor(Math.random() * cs.length)];
+    }
+    code.textContent = out;
+    if (t > target.length + 2) clearInterval(iv);
+  }, 55);
+})();
+
+// ── TICKER ──
+(() => {
+  const items = [
+    ['Stack','Node.js'],['Protocol','Colyseus'],['Runtime','Docker'],['Hosting','Railway'],
+    ['Client','Vanilla JS'],['Latency','<60ms'],['Crew','2–6 players'],['Rooms','6'],
+    ['Mobile','First-class'],['Accounts','None needed'],['Audio','Ambient loop'],
+    ['Cursors','Real-time'],['Font','Inter'],['Auth','Link-based'],
+  ];
+  const t = document.getElementById('ticker');
+  const html = items.map(([k,v]) => `<span class="t-item"><span class="d"></span>${k} · <b>${v}</b></span>`).join('');
+  t.innerHTML = html + html;
+})();
+
+// ── TELEMETRY ──
+(() => {
+  const hr = document.getElementById('tel-hr');
+  const on = document.getElementById('tel-on');
+  const nd = document.getElementById('next-drop');
+  let secs = 266;
+  setInterval(() => {
+    secs = secs > 0 ? secs - 1 : 600;
+    const m = String(Math.floor(secs/60)).padStart(2,'0');
+    const s = String(secs%60).padStart(2,'0');
+    nd.textContent = `T–00:${m}:${s}`;
+  }, 1000);
+  setInterval(() => {
+    const n = new Date();
+    hr.textContent = String(n.getUTCHours()).padStart(2,'0') + ':' + String(n.getUTCMinutes()).padStart(2,'0');
+  }, 1000);
+  let online = 2148;
+  setInterval(() => {
+    online += Math.floor(Math.random() * 7 - 3);
+    on.textContent = online.toLocaleString();
+  }, 2400);
+})();
+
+// ── REVEAL ──
+(() => {
+  const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) e.target.classList.add('in'); }), {threshold:.1});
+  document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+})();
+
+// ── JOIN SESSION ──
+function joinSession() {
+  const v = document.getElementById('code-input').value.trim().toUpperCase();
+  if (v.length < 3) { alert('Enter a valid session code.'); return; }
+  const door = document.getElementById('door');
+  document.getElementById('door-code').textContent = `JOINING SESSION ${v}`;
+  door.classList.remove('open');
+  setTimeout(() => door.classList.add('open'), 200);
+}
+document.getElementById('code-input').addEventListener('keydown', e => { if (e.key === 'Enter') joinSession(); });
+</script>
+</body>
+</html>

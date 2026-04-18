@@ -1,7 +1,6 @@
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
-watchPatterns = ["src/**", "public/**", "package.json", "tsconfig.server.json", "vite.config.ts", "index.html", "Dockerfile", "railway.toml"]
 
 [deploy]
 healthcheckPath = "/health"
