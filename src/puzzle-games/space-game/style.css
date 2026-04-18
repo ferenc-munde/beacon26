@@ -13,6 +13,22 @@ body {
     user-select: none;
 }
 
+/* Shell Integration */
+body.in-shell #topHud { display: none !important; }
+
+body.in-shell .sidebar {
+    right: 15px;
+    top: 60%;
+    width: 200px;
+    padding: 12px;
+    transform: translateY(-50%) scale(0.9);
+}
+
+body.in-shell #bottomHud {
+    bottom: 15px;
+    transform: translateX(-50%) scale(0.85);
+}
+
 #bg-image {
     position: absolute;
     top: 0;
