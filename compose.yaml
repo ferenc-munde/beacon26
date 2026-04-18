@@ -5,3 +5,11 @@ services:
       - "3000:3000"
     environment:
       - PORT=3000
+
+  beacon26-ai:
+    build:
+      context: ./ai
+    ports:
+      - "8000:8000"
+    environment:
+      - PORT=8000
