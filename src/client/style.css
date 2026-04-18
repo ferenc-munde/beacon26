@@ -233,3 +233,80 @@ h1 {
     width: 200px;
   }
 }
+/* -- Session Info ------------------------------------------------------------- */
+.session-panel {
+  position: fixed;
+  bottom: 24px;
+  left: 24px;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(12px);
+  padding: 8px 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-family: 'Inter', sans-serif;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.session-panel:hover {
+  border-color: var(--secondary);
+  background: rgba(15, 23, 42, 0.8);
+  box-shadow: 0 0 20px rgba(56, 189, 248, 0.2);
+}
+
+.session-label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  color: #94a3b8;
+}
+
+.session-id {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  color: var(--secondary);
+  text-transform: uppercase;
+}
+
+.copy-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.copy-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.copy-icon {
+  width: 16px;
+  height: 16px;
+  fill: #94a3b8;
+  transition: fill 0.2s;
+}
+
+.copy-btn:hover .copy-icon {
+  fill: var(--secondary);
+}
+
+.copy-btn.success .copy-icon {
+  fill: var(--primary);
+}
+
+@media (max-width: 720px) {
+  .session-panel {
+    bottom: auto;
+    top: 80px;
+    left: 20px;
+  }
+}

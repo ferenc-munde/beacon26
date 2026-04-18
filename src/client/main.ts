@@ -2,13 +2,9 @@ import './style.css';
 import { Client, Room } from 'colyseus.js';
 import {
   AmbientLight,
-  BufferGeometry,
   Color,
   CylinderGeometry,
   DoubleSide,
-  Float32BufferAttribute,
-  LineBasicMaterial,
-  LineSegments,
   Mesh,
   MeshBasicMaterial,
   MeshStandardMaterial,
@@ -43,7 +39,6 @@ type PlayerSnapshot = {
 };
 
 // ─── Puzzle configuration ─────────────────────────────────────────────────────
-// 4 hexagon nodes: [id, color, world-position]
 const PUZZLES: Array<{ id: string; label: string; color: string; pos: [number, number, number] }> = [
   { id: 'cosmic_clues',        label: 'Terminal Zero',        color: '#ff00ff', pos: [-4.5,  0.2, -1.5] },
   { id: 'quantum_switchboard', label: 'Quantum Switchboard',  color: '#facc15', pos: [-2.5,  0.2,  1.0] },
@@ -52,7 +47,6 @@ const PUZZLES: Array<{ id: string; label: string; color: string; pos: [number, n
   { id: 'word_search',         label: 'Word Search',          color: '#fb923c', pos: [ 0.5,  0.2, -3.0] },
 ];
 
-// Map puzzle id → URL served by Express
 const PUZZLE_URLS: Record<string, string> = {
   cosmic_clues:        '/puzzles/cosmic_clues.html',
   quantum_switchboard: '/puzzles/quantum-switchboard.html',
@@ -123,7 +117,6 @@ const beacon = new Mesh(
 beacon.position.set(0, 2.8, -3.5);
 scene.add(beacon);
 
-// Local cursor (white sphere)
 const localCursor = new Mesh(
   new SphereGeometry(0.18, 24, 24),
   new MeshStandardMaterial({ color: '#f8fafc', emissive: '#cbd5e1', emissiveIntensity: 0.4 })
@@ -131,12 +124,9 @@ const localCursor = new Mesh(
 localCursor.position.set(0, 0.2, 0);
 scene.add(localCursor);
 
-// ─── Puzzle Hex Nodes ─────────────────────────────────────────────────────────
-
 const hexMeshes: Array<{ mesh: Mesh; puzzle: typeof PUZZLES[0]; glowLight: PointLight }> = [];
 
 PUZZLES.forEach(p => {
-  // Flat-top hexagonal cylinder (6 sides, very thin)
   const geo = new CylinderGeometry(0.55, 0.55, 0.12, 6);
   const mat = new MeshStandardMaterial({
     color: p.color,
@@ -147,11 +137,10 @@ PUZZLES.forEach(p => {
   });
   const mesh = new Mesh(geo, mat);
   mesh.position.set(...p.pos);
-  mesh.rotation.y = Math.PI / 6; // Orient flat-top
+  mesh.rotation.y = Math.PI / 6;
   mesh.userData = { puzzleId: p.id };
   scene.add(mesh);
 
-  // Subtle glow under each hex
   const light = new PointLight(p.color, 1.2, 3);
   light.position.set(p.pos[0], p.pos[1] - 0.1, p.pos[2]);
   scene.add(light);
@@ -159,13 +148,11 @@ PUZZLES.forEach(p => {
   hexMeshes.push({ mesh, puzzle: p, glowLight: light });
 });
 
-// ─── Raycaster for hex clicks ─────────────────────────────────────────────────
-
 const raycaster = new Raycaster();
 const mouse2d = new Vector2();
 
 function onPointerClick(event: PointerEvent) {
-  if (!isPuzzleOverlayHidden()) return; // Don't click through the overlay
+  if (!isPuzzleOverlayHidden()) return;
   if (!room || !room.connection?.isOpen) return;
 
   mouse2d.x = (event.clientX / window.innerWidth) * 2 - 1;
@@ -181,8 +168,6 @@ function onPointerClick(event: PointerEvent) {
 
 window.addEventListener('pointerdown', onPointerClick);
 
-// ─── Remote cursors ───────────────────────────────────────────────────────────
-
 const remotes = new Map<string, RemoteCursor>();
 
 function ensureRemoteCursor(sessionId: string, player: any): void {
@@ -196,7 +181,6 @@ function ensureRemoteCursor(sessionId: string, player: any): void {
   scene.add(mesh);
 
   const material = mesh.material as MeshStandardMaterial;
-
   const label = document.createElement('div');
   label.className = 'cursor-label';
   label.textContent = player.name;
@@ -217,8 +201,6 @@ function ensureRemoteCursor(sessionId: string, player: any): void {
   });
 }
 
-// ─── Activity Log ─────────────────────────────────────────────────────────────
-
 const activityLog = document.querySelector<HTMLDivElement>('#activity-log')!;
 
 function logActivity(text: string, type: 'join' | 'leave' | 'info' | 'solve' = 'info') {
@@ -226,15 +208,11 @@ function logActivity(text: string, type: 'join' | 'leave' | 'info' | 'solve' = '
   entry.className = `activity-entry activity-${type}`;
   entry.textContent = text;
   activityLog.prepend(entry);
-  // Keep max 8 entries
   while (activityLog.children.length > 8) {
     activityLog.removeChild(activityLog.lastChild!);
   }
-  // Auto-fade after 6 seconds
   setTimeout(() => entry.classList.add('faded'), 6000);
 }
-
-// ─── Puzzle Overlay ───────────────────────────────────────────────────────────
 
 const overlay   = document.querySelector<HTMLDivElement>('#puzzle-overlay')!;
 const iframe    = document.querySelector<HTMLIFrameElement>('#puzzle-iframe')!;
@@ -257,7 +235,7 @@ function openPuzzleOverlay(puzzleId: string) {
 
 function closePuzzleOverlay() {
   overlay.classList.add('hidden');
-  iframe.src = ''; // Stops the iframe and its timers
+  iframe.src = '';
   toastEl.classList.add('hidden');
   toastEl.textContent = '';
 }
@@ -267,7 +245,7 @@ function showSolveToast(text: string) {
   toastEl.classList.remove('hidden');
   setTimeout(() => {
     closePuzzleOverlay();
-  }, 4000); // Give players 4s to read the toast, then close
+  }, 4000);
 }
 
 quitBtn.addEventListener('click', () => {
@@ -277,20 +255,15 @@ quitBtn.addEventListener('click', () => {
   closePuzzleOverlay();
 });
 
-// Listen for PUZZLE_SOLVED messages from the iframe (via postMessage)
 window.addEventListener('message', (event: MessageEvent) => {
   if (!event.data || typeof event.data !== 'object') return;
   const { type, puzzle } = event.data;
-
   if (type === 'PUZZLE_SOLVED' && puzzle) {
-    // Tell the server — server will broadcast CLOSE_PUZZLE to all
     if (room?.connection?.isOpen) {
       room.send('puzzle_solved', { puzzle });
     }
   }
-
   if (type === 'EXIT_GAME') {
-    // Single-player close
     if (room?.connection?.isOpen) {
       room.send('puzzle_closed', {});
     }
@@ -312,10 +285,32 @@ void tick();
 
 async function joinRoom(): Promise<void> {
   try {
-    room = await client.joinOrCreate('beacon_puzzle');
-    status!.textContent = `Connected · ${room.sessionId.slice(0, 8)}`;
+    const params = new URLSearchParams(window.location.search);
+    const requestedRoomId = params.get('room');
+    const name = sessionStorage.getItem('playerName') || `Player ${Math.floor(Math.random() * 1000)}`;
+    
+    if (requestedRoomId) {
+      console.log(`[Lobby] Attempting to join session: ${requestedRoomId}`);
+      room = await client.joinById(requestedRoomId, { name });
+    } else {
+      console.log(`[Lobby] Creating new session...`);
+      room = await client.create('beacon_puzzle', { name });
+    }
 
-    // ── Server → client messages ────────────────────────────────────────────
+    // Capture the join/create ID for display and URL sync
+    // In current colyseus.js, the public room ID is room.id
+    const actualRoomId = room.id;
+    console.log(`[Lobby] Successfully joined/created session: ${actualRoomId}`);
+
+    // Update URL with the actual room ID for easy sharing
+    const newUrl = new URL(window.location.href);
+    newUrl.searchParams.set('room', actualRoomId);
+    window.history.replaceState({}, '', newUrl.toString());
+
+    // Update status and session overlay
+    status!.textContent = `Connected · ${room.sessionId.slice(0, 8)}`;
+    updateSessionUI(actualRoomId);
+
     room.onMessage('OPEN_PUZZLE', (data: { puzzle: string }) => {
       openPuzzleOverlay(data.puzzle);
     });
@@ -324,7 +319,6 @@ async function joinRoom(): Promise<void> {
       const p = PUZZLES.find(x => x.id === data.puzzle);
       const label = p?.label ?? data.puzzle;
       logActivity(`[ ✓ SOLVED ] ${label} by ${data.solvedBy}`, 'solve');
-
       if (data.allSolved) {
         showSolveToast(`🎉 All puzzles solved! Mission complete!`);
       } else {
@@ -332,7 +326,6 @@ async function joinRoom(): Promise<void> {
       }
     });
 
-    // ── State: players ──────────────────────────────────────────────────────
     room.onStateChange.once(() => {
       room!.state.players.onAdd((player: any, sessionId: string) => {
         ensureRemoteCursor(sessionId, player);
@@ -340,7 +333,6 @@ async function joinRoom(): Promise<void> {
           logActivity(`[+] ${player.name} joined`, 'join');
         }
       });
-
       room!.state.players.onRemove((_player: any, sessionId: string) => {
         const remote = remotes.get(sessionId);
         if (remote) {
@@ -352,9 +344,8 @@ async function joinRoom(): Promise<void> {
           remotes.delete(sessionId);
         }
       });
-
-      for (const [sessionId, player] of room!.state.players.entries()) {
-        ensureRemoteCursor(sessionId, player);
+      for (const [id, p] of room!.state.players.entries()) {
+        ensureRemoteCursor(id, p);
       }
     });
 
@@ -400,14 +391,11 @@ function syncCursor(): void {
   const now = performance.now();
   if (now - lastSentAt < 75) return;
   lastSentAt = now;
-  room.send('cursor', { x: localX, y: 0.2, z: localY } satisfies PlayerSnapshot);
+  room.send('cursor', { x: localX, y: 0.2, z: localY });
 }
-
-// ─── Render Loop ──────────────────────────────────────────────────────────────
 
 function tick(): void {
   const t = Date.now() * 0.001;
-
   for (const remote of remotes.values()) {
     remote.mesh.position.lerp(remote.target, 0.2);
     const projected = remote.mesh.position.clone().project(camera);
@@ -416,36 +404,52 @@ function tick(): void {
     remote.label.style.transform = `translate(${screenX}px, ${screenY}px)`;
     remote.label.style.borderColor = remote.color;
   }
-
-  // Animate hex nodes: gentle bob + glow pulse
   hexMeshes.forEach(({ mesh, puzzle, glowLight }, i) => {
     mesh.position.y = 0.2 + Math.sin(t * 1.2 + i * 1.3) * 0.06;
     const intensity = 0.6 + Math.sin(t * 2.0 + i * 0.9) * 0.3;
     (mesh.material as MeshStandardMaterial).emissiveIntensity = intensity;
     glowLight.intensity = 0.8 + Math.sin(t * 2.0 + i * 0.9) * 0.5;
   });
-
   if (!hasPointer) localCursor.rotation.y += 0.01;
-
   renderer.render(scene, camera);
   requestAnimationFrame(tick);
 }
 
-// ─── Events ───────────────────────────────────────────────────────────────────
-
 window.addEventListener('pointermove', updateCursor, { passive: true });
-
 window.addEventListener('touchmove', (event) => {
   const touch = event.touches[0];
   if (!touch) return;
-  updateCursor(new PointerEvent('pointermove', {
-    clientX: touch.clientX,
-    clientY: touch.clientY,
-  }));
+  updateCursor(new PointerEvent('pointermove', { clientX: touch.clientX, clientY: touch.clientY }));
 }, { passive: true });
-
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
 });
+
+// ─── Session UI ───────────────────────────────────────────────────────────────
+
+function updateSessionUI(roomId: string) {
+  console.log(`[UI] Updating session display with ID: ${roomId}`);
+  const display = document.getElementById('session-id-display');
+  const copyBtn = document.getElementById('copy-session-btn');
+  
+  if (display) {
+    display.textContent = roomId || "UNKNOWN";
+  }
+  
+  if (copyBtn) {
+    copyBtn.onclick = () => {
+      const inviteUrl = window.location.href;
+      navigator.clipboard.writeText(inviteUrl).then(() => {
+        copyBtn.classList.add('success');
+        const originalTitle = copyBtn.getAttribute('title');
+        copyBtn.setAttribute('title', 'Copied!');
+        setTimeout(() => {
+          copyBtn.classList.remove('success');
+          copyBtn.setAttribute('title', originalTitle || 'Copy Invite Link');
+        }, 2000);
+      });
+    };
+  }
+}

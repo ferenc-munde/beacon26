@@ -32,6 +32,21 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     emptyOutDir: true,
+    rollupOptions: {
+      input: {
+        // Landing page → dist/index.html
+        main: resolve(__dirname, 'index.html'),
+        // 3D game lobby → dist/game/index.html (served at /game)
+        game: resolve(__dirname, 'game.html'),
+      },
+      output: {
+        // Keep the game entry under dist/game/index.html
+        entryFileNames: (chunk) => {
+          if (chunk.name === 'game') return 'game/[name]-[hash].js';
+          return 'assets/[name]-[hash].js';
+        },
+      },
+    },
   },
   plugins: [copyPuzzleGames()],
 });
