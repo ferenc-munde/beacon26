@@ -1,5 +1,6 @@
 node_modules/
 dist/
+docs/
 package-lock.json
 
 # Logs
@@ -23,3 +24,7 @@ pnpm-debug.log*
 __pycache__/
 *.pyc
 .venv/
+
+# AI agent
+docs/*
+.superpowers
