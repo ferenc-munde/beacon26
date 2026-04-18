@@ -46,13 +46,17 @@
             </div>
         </div>
     </div>
+    <audio id="bg-audio" loop>
+        <source src="../../../public/audio/beacon_background_music.mp3" type="audio/mpeg">
+        Your browser does not support the audio element.
+    </audio>
 
     <script src="shell-manager.js"></script>
     <script>
         // Use URL parameters to decide which game to load
         const urlParams = new URLSearchParams(window.location.search);
         // Default to star_map for testing
-        const gameUrl = urlParams.get('game') || '../star_map/game.html';
+        const gameUrl = urlParams.get('game') || '../quantum_switchboard/game.html';
         const title = urlParams.get('title') || 'STAR_MAP';
         
         if (gameUrl) {
@@ -61,6 +65,25 @@
             document.getElementById('shell-status').textContent = 'SYSTEM_READY';
         } else {
             document.getElementById('shell-status').textContent = 'ERROR: NO_MODULE_SPECIFIED';
+        }
+
+        // Background music setup
+        const bgAudio = document.getElementById('bg-audio');
+        if (bgAudio) {
+            bgAudio.volume = 0.3; // Set a reasonable default volume
+            const playAudio = () => {
+                bgAudio.play().catch(e => console.log('Autoplay blocked. User interaction required:', e));
+            };
+            
+            // Try autoplay
+            playAudio();
+            
+            // Fallback for browsers that require interaction before playing audio
+            document.addEventListener('click', () => {
+                if (bgAudio.paused) {
+                    bgAudio.play();
+                }
+            }, { once: true });
         }
     </script>
 </body>
